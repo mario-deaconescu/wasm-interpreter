@@ -5,7 +5,8 @@ from re import Match, Pattern
 
 
 class SExpression:
-    name: str
+    expression_type: str
+    name: str = None
     children: list[SExpression] = []
 
     @staticmethod
@@ -60,7 +61,7 @@ class SExpression:
         match: Match[str] | None = re.fullmatch('\(.*\)', expression_string)
         if match is None:
             # No surrounding parentheses
-            self.name = expression_string
+            self.expression_type = expression_string
             return
 
         # Remove redundant parentheses
@@ -69,13 +70,36 @@ class SExpression:
         # Separate name from children
         children_string: str = ""
         split_expression: list[str] = expression_string.split(' ', 1)
-        self.name = split_expression[0]
+        self.expression_type = split_expression[0]
         if len(split_expression) > 1:
             children_string = split_expression[1]
         self.children = [SExpression(subexpression) for subexpression in SExpression.get_parentheses(children_string)]
 
+        # Check if expression has a name
+        if self.children[0].expression_type[0] == '$':
+            # The name is the variable name without the '$'
+            self.name = self.children[0].expression_type[1:]
+            # Remove the variable name from the children
+            self.children = self.children[1:]
+
+        # Check expression type
+        match self.expression_type:
+            case 'module':
+                self.__class__ = Module
+            case 'func':
+                self.__class__ = Function
+
     def __str__(self) -> str:
-        return self.name
+        return f'{self.expression_type}[{self.__class__.__name__}]' + (
+            f'({self.name})' if self.name is not None else '')
 
     def __repr__(self, level=0) -> str:
         return '\t' * level + '- ' + str(self) + '\n' + ''.join([child.__repr__(level + 1) for child in self.children])
+
+
+class Module(SExpression):
+    pass
+
+
+class Function(SExpression):
+    pass
