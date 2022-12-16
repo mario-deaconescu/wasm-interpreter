@@ -1,8 +1,15 @@
 from __future__ import annotations
 
 import re
+from dataclasses import dataclass
 from re import Match, Pattern
 
+from enums import NumberType
+
+@dataclass
+class NumberVariable:
+    number_type: NumberType
+    name: str | None
 
 class SExpression:
     expression_type: str
@@ -56,13 +63,15 @@ class SExpression:
 
         return [expression]
 
-    def __init__(self, expression_string: str) -> None:
+    def __new__(cls, expression_string: str, *args, **kwargs) -> SExpression:
+        instance = super().__new__(cls)
+
         # Check if expression has surrounding parentheses
         match: Match[str] | None = re.fullmatch('\(.*\)', expression_string)
         if match is None:
             # No surrounding parentheses
-            self.expression_type = expression_string
-            return
+            instance.expression_type = expression_string
+            return instance
 
         # Remove redundant parentheses
         expression_string = expression_string[1:-1].strip()
@@ -70,27 +79,42 @@ class SExpression:
         # Separate name from children
         children_string: str = ""
         split_expression: list[str] = expression_string.split(' ', 1)
-        self.expression_type = split_expression[0]
+        instance.expression_type = split_expression[0]
         if len(split_expression) > 1:
             children_string = split_expression[1]
-        self.children = [SExpression(subexpression) for subexpression in SExpression.get_parentheses(children_string)]
+
+        c = []
+        for x in SExpression.get_parentheses(children_string):
+            c.append(SExpression(x))
+        instance.children = c
 
         # Check if expression has a name
-        if self.children[0].expression_type[0] == '$':
+        if len(instance.children) > 0 and instance.children[0].expression_type[0] == '$':
             # The name is the variable name without the '$'
-            self.name = self.children[0].expression_type[1:]
+            instance.name = instance.children[0].expression_type[1:]
             # Remove the variable name from the children
-            self.children = self.children[1:]
+            instance.children = instance.children[1:]
 
         # Check expression type
-        match self.expression_type:
+        match instance.expression_type:
             case 'module':
-                self.__class__ = Module
+                instance.__class__ = Module
             case 'func':
-                self.__class__ = Function
+                instance.__class__ = FunctionExpression
+            case 'export':
+                instance.__class__ = ExportExpression
+            case 'param':
+                instance.__class__ = ParamExpression
+            case 'result':
+                instance.__class__ = ResultExpression
+
+        return instance
+
+    def __init__(self, *args, **kwargs) -> None:
+        pass
 
     def __str__(self) -> str:
-        return f'{self.expression_type}[{self.__class__.__name__}]' + (
+        return f'{self.expression_type}' + (
             f'({self.name})' if self.name is not None else '')
 
     def __repr__(self, level=0) -> str:
@@ -101,5 +125,82 @@ class Module(SExpression):
     pass
 
 
-class Function(SExpression):
+class FunctionExpression(SExpression):
+    export_as: str = None
+    parameters: list[NumberVariable]
+    result_type: NumberType | None = None
+
+    def __str__(self) -> str:
+        representation: str = super().__str__()
+        parameter_representations: list[str] = []
+        for parameter in self.parameters:
+            if parameter.name is None:
+                parameter_representations.append(parameter.number_type.value)
+            else:
+                parameter_representations.append(f"{parameter.name}: {str(parameter.number_type.value)}")
+        representation += f"({', '.join(parameter_representations)})"
+        representation += f" -> {self.result_type.value if self.result_type is not None else 'None'}"
+        representation += f' (exported as "{self.export_as}")'
+        return representation
+
+    def __init__(self, *args, **kwargs) -> None:
+        super().__init__(*args, **kwargs)
+        self.parameters = []
+        if len(self.children) > 0:
+            if isinstance(self.children[0], ExportExpression):
+                export_expression: ExportExpression = self.children[0]
+                self.export_as = export_expression.export_name
+                self.children = self.children[1:]
+        child_index: int = 0
+        while child_index < len(self.children) and isinstance(self.children[child_index], ParamExpression):
+            parameter_expression: ParamExpression = self.children[child_index]
+            self.parameters.append(NumberVariable(parameter_expression.number_type, parameter_expression.name))
+            child_index += 1
+        # Remove parameters from children
+        self.children = self.children[child_index:]
+        if len(self.children) > 0:
+            if isinstance(self.children[0], ResultExpression):
+                result_expression: ResultExpression = self.children[0]
+                self.result_type = result_expression.number_type
+                self.children = self.children[1:]
+
+
+class ExportExpression(SExpression):
+    export_name: str
+
+    def __init__(self, *args, **kwargs) -> None:
+        super().__init__(*args, **kwargs)
+        if len(self.children) != 1:
+            raise ValueError(f"Export expression has incorrect number of parameters ({len(self.children)})")
+        # Remove "" from name
+        self.export_name = self.children[0].expression_type[1:-1]
+        self.children = []
+
+
+class NumberExpression(SExpression):
+    number_type: NumberType
+
+    def __init__(self, *args, **kwargs) -> None:
+        super().__init__(*args, **kwargs)
+        if len(self.children) != 1:
+            raise ValueError(f"Number expression has incorrect number of parameters ({len(self.children)})")
+        match self.children[0].expression_type:
+            case 'i32':
+                self.number_type = NumberType.i32
+            case 'i64':
+                self.number_type = NumberType.i64
+            case 'f32':
+                self.number_type = NumberType.f32
+            case 'f64':
+                self.number_type = NumberType.f64
+            case _:
+                raise ValueError("Invalid number type")
+        self.children = []
+
+
+class ParamExpression(NumberExpression):
+    pass
+
+
+class ResultExpression(NumberExpression):
     pass
