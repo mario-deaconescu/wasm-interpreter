@@ -1,15 +1,21 @@
 from __future__ import annotations
 
 import re
+from abc import abstractmethod
 from dataclasses import dataclass
 from re import Match, Pattern
 
 from enums import NumberType
+from functions import FixedNumber
+
+EXPORTED_FUNCTIONS: dict[str, FunctionExpression] = {}
+
 
 @dataclass
 class NumberVariable:
     number_type: NumberType
     name: str | None
+
 
 class SExpression:
     expression_type: str
@@ -67,7 +73,7 @@ class SExpression:
         instance = super().__new__(cls)
 
         # Check if expression has surrounding parentheses
-        match: Match[str] | None = re.fullmatch('\(.*\)', expression_string)
+        match: Match[str] | None = re.fullmatch(r'\(.*\)', expression_string)
         if match is None:
             # No surrounding parentheses
             instance.expression_type = expression_string
@@ -107,6 +113,12 @@ class SExpression:
                 instance.__class__ = ParamExpression
             case 'result':
                 instance.__class__ = ResultExpression
+            case 'local.get':
+                instance.__class__ = LocalGetter
+
+        # Check if it's a predefined function
+        if re.fullmatch(r'.{3}\.add', instance.expression_type) is not None:
+            instance.__class__ = AddExpression
 
         return instance
 
@@ -125,7 +137,16 @@ class Module(SExpression):
     pass
 
 
-class FunctionExpression(SExpression):
+class Evaluation(SExpression):
+
+    number_type: NumberType = None
+
+    @abstractmethod
+    def evaluate(self, local_variables: dict[str, FixedNumber], *args) -> FixedNumber:
+        pass
+
+
+class FunctionExpression(Evaluation):
     export_as: str = None
     parameters: list[NumberVariable]
     result_type: NumberType | None = None
@@ -151,6 +172,7 @@ class FunctionExpression(SExpression):
                 export_expression: ExportExpression = self.children[0]
                 self.export_as = export_expression.export_name
                 self.children = self.children[1:]
+                EXPORTED_FUNCTIONS[self.export_as] = self
         child_index: int = 0
         while child_index < len(self.children) and isinstance(self.children[child_index], ParamExpression):
             parameter_expression: ParamExpression = self.children[child_index]
@@ -163,6 +185,26 @@ class FunctionExpression(SExpression):
                 result_expression: ResultExpression = self.children[0]
                 self.result_type = result_expression.number_type
                 self.children = self.children[1:]
+
+    def evaluate(self, local_variables: dict[str | int, FixedNumber], *args) -> FixedNumber:
+        # Check parameters
+        for index, arg in enumerate(args):
+            if not isinstance(arg, FixedNumber):
+                raise TypeError("Functions expect FixedNumber type")
+            fixed_arg: FixedNumber = arg
+            if self.parameters[index].number_type != fixed_arg.number_type:
+                raise TypeError("Invalid parameter type")
+            # Variables are referenced by number
+            local_variables[index] = fixed_arg
+            # Variables can also be referenced by name
+            if self.parameters[index].name is not None:
+                local_variables[self.parameters[index].name] = fixed_arg
+        for expression in self.children:
+            if not isinstance(expression, Evaluation):
+                raise TypeError("Expression can not be evaluated")
+        if len(self.children) == 1:
+            evaluation: Evaluation = self.children[0]
+            return evaluation.evaluate(local_variables)
 
 
 class ExportExpression(SExpression):
@@ -204,3 +246,39 @@ class ParamExpression(NumberExpression):
 
 class ResultExpression(NumberExpression):
     pass
+
+
+class BinaryEvaluation(Evaluation):
+
+    @property
+    def first_operand(self) -> Evaluation:
+        return self.children[0]
+
+    @property
+    def second_operand(self) -> Evaluation:
+        return self.children[1]
+
+    def __init__(self, *args, **kwargs) -> None:
+        super().__init__(*args, **kwargs)
+        self.number_type = NumberType(self.expression_type[:3])
+
+
+class AddExpression(BinaryEvaluation):
+
+    def evaluate(self, local_variables: dict[str | int, FixedNumber], *args) -> FixedNumber:
+        first_evaluation: FixedNumber = self.first_operand.evaluate(local_variables)
+        second_evaluation: FixedNumber = self.second_operand.evaluate(local_variables)
+        assert (first_evaluation.number_type == self.number_type and second_evaluation.number_type == self.number_type)
+        return FixedNumber(first_evaluation.value + second_evaluation.value, self.number_type)
+
+    def __init__(self, *args, **kwargs) -> None:
+        super().__init__(*args, **kwargs)
+        if len(self.children) != 2:
+            raise ValueError(f"Invalid number of operand for add operation ({len(self.children)})")
+
+
+class LocalGetter(Evaluation):
+
+    def evaluate(self, local_variables: dict[str | int, FixedNumber], *args) -> FixedNumber:
+        assert (self.name in local_variables)
+        return local_variables[self.name]
