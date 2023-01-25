@@ -1,23 +1,36 @@
+from __future__ import annotations
+
 from argparse import ArgumentParser, Namespace
 from os.path import exists
-from typing import Generator
+from typing import Generator, TYPE_CHECKING
+import re
+from instantiate import create_expression
 
-from enums import NumberType
-from custom_exceptions import InvalidNumberTypeError
-from expressions import SExpression, EXPORTED_FUNCTIONS, AssertInvalidExpression, AssertExpression
-from functions import FixedNumber
+from expressions import SExpression
+from assertions import AssertExpression
 
 
 FAIL_CODE = '\033[91m'
 ENDC = '\033[0m'
+
+DEBUG = True
 
 
 # Generator for more efficient parsing
 def read_expressions(input_file_name: str) -> Generator[SExpression, None, None]:
     with open(input_file_name, 'r') as input_file:
         expression_string = input_file.read().replace('\n', '')
-    for string in SExpression.get_parentheses(expression_string):
-        yield SExpression(string)
+        expression_string = re.sub(" +", " ", expression_string)
+    for index, string in enumerate(SExpression.get_parentheses(expression_string)):
+        if DEBUG:
+            # print(f"Parsed expression #{index}: {string}")
+            try:
+                yield create_expression(string)
+            except NotImplementedError as error:
+                # print(error)
+                pass
+        else:
+            yield create_expression(string)
 
 
 def check_asserts(input_file_name: str) -> None:
@@ -34,6 +47,7 @@ def check_asserts(input_file_name: str) -> None:
             assertion_index += 1
     print()
     print(f'Correct assertions: {number_of_correct_assertions}/{assertion_index}.')
+
 
 if __name__ == '__main__':
 

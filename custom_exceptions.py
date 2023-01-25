@@ -1,13 +1,16 @@
 from __future__ import annotations
 from typing import TYPE_CHECKING
 
-if TYPE_CHECKING:
-    from expressions import FunctionExpression, NumberVariable
-    from functions import NumberType, FixedNumber
+from enums import NumberType
 
-EXCEPTION_NAMES: dict[str, str] = {
-    'type mismatch': 'InvalidNumberTypeError'
+if TYPE_CHECKING:
+    from function import FunctionExpression
+    from variables import FixedNumber, NumberVariable
+
+EXCEPTION_NAMES: dict[str, list[str]] = {
+    'type mismatch': ['InvalidNumberTypeError', 'EmptyOperandError']
 }
+
 
 class WebAssemblyException(Exception):
     pass
@@ -49,4 +52,27 @@ class InvalidFunctionSignatureError(WebAssemblyException):
         self.function = function
         self.parameters = args
         message: str = f'Function "{function.name}" expected {len(function.parameters)} and got {len(args)}'
+        super().__init__(message)
+
+
+class StackOverflowError(WebAssemblyException):
+
+    def __init__(self, stack_size: int):
+        self.stack_size = stack_size
+        message: str = f'Stack overflow: Stack size is {stack_size}'
+        super().__init__(message)
+
+
+class StackEmptyError(WebAssemblyException):
+
+    def __init__(self):
+        message: str = 'Stack is empty'
+        super().__init__(message)
+
+
+class EmptyOperandError(WebAssemblyException):
+
+    def __init__(self, expected_operands: int):
+        self.expected_operands = expected_operands
+        message: str = f'Expected {expected_operands} operands'
         super().__init__(message)
