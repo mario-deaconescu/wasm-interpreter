@@ -44,8 +44,12 @@ class UnaryEvaluation(Evaluation):
 
     def __init__(self, numeric=True) -> None:
         super().__init__()
+        if len(self.children) < 1:
+            raise EmptyOperandError(1)
         if numeric:
             self.number_type = NumberType(self.expression_name[:3])
+            if isinstance(self.operand, Evaluation) and self.operand.number_type is not None and self.operand.number_type != self.number_type:
+                raise InvalidNumberTypeError(FixedNumber(None, self.operand.number_type), self.number_type)
 
     def assert_correctness(self, local_variables: VariableWatch, global_variables=None) -> NumberType:
         return_type: NumberType = self.operand.assert_correctness(local_variables)
@@ -80,15 +84,10 @@ class BinaryEvaluation(Evaluation):
         if len(self.children) < 2:
             raise EmptyOperandError(2)
         self.number_type = NumberType(self.expression_name[:3])
-
-    def assert_correctness(self, local_variables: VariableWatch, global_variables=None) -> NumberType:
-        return_type1: NumberType = self.first_operand.assert_correctness(local_variables)
-        return_type2: NumberType = self.second_operand.assert_correctness(local_variables)
-        if not return_type1 == self.number_type:
-            raise InvalidNumberTypeError(FixedNumber(0, return_type1), self.number_type)
-        if not return_type2 == self.number_type:
-            raise InvalidNumberTypeError(FixedNumber(0, return_type2), self.number_type)
-        return self.number_type
+        if self.first_operand.number_type is not None and self.first_operand.number_type != self.number_type:
+            raise InvalidNumberTypeError(FixedNumber(None, self.first_operand.number_type), self.number_type)
+        if self.second_operand.number_type is not None and self.second_operand.number_type != self.number_type:
+            raise InvalidNumberTypeError(FixedNumber(None, self.second_operand.number_type), self.number_type)
 
     def check_and_evaluate(self, stack: Stack, local_variables: VariableWatch = None, global_variables: VariableWatch = None) -> tuple[
         FixedNumber, FixedNumber]:

@@ -81,7 +81,8 @@ class FixedNumber:
     number_type: NumberType
 
     def __post_init__(self) -> None:
-        self._value = assert_number_type(self._value, self.number_type)
+        if self._value is not None:
+            self._value = assert_number_type(self._value, self.number_type)
 
     @property
     def value(self) -> int | float:
