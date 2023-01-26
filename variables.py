@@ -119,8 +119,12 @@ def assert_number_type(number: int | float, number_type: NumberType) -> int | fl
     # Overflow
     if number_type == NumberType.i32:
         number = number & 0xFFFFFFFF
+        if number < 0:
+            number = -0xF00000000 + number
     elif number_type == NumberType.i64:
         number = number & 0xFFFFFFFFFFFFFFFF
+        if number < 0:
+            number = -0xF0000000000000000 + number
     elif number_type == NumberType.f32 and not can_be_represented_in_32_bits(number):
         number = ctypes.c_float(number)
     return number
