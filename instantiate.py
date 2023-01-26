@@ -48,6 +48,7 @@ CLASSES_DICT: dict[str, str] = {
     'call_indirect': 'CallIndirectExpression',
     'memory.grow': 'MemoryGrowExpression',
     'store': 'StoreExpression',
+    'mul': 'MulExpression',
 }
 
 
