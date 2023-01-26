@@ -34,6 +34,8 @@ CLASSES_DICT: dict[str, str] = {
     'or': 'OrExpression',
     'xor': 'XorExpression',
     'shl': 'ShlExpression',
+    'shr_s': "ShrsExpression",
+    'shr_u': "ShruExpression",
     'div_s': 'DivSignedExpression',
     'div_u': 'DivUnsignedExpression',
     'const': 'ConstExpression',

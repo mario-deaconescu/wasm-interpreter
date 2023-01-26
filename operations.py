@@ -114,7 +114,7 @@ class DivSignedExpression(BinaryEvaluation):
         try:
             result = int(first_evaluation.value / second_evaluation.value)
         except OverflowError as e:
-            raise OverflowError() #TODO
+            raise OverflowError()  # TODO
         stack.push(FixedNumber(result, self.number_type))
 
 
@@ -126,7 +126,7 @@ class DivUnsignedExpression(BinaryEvaluation):
         if second_evaluation.value == 0:
             raise DivisionByZeroError()
         stack.push(FixedNumber(first_evaluation.unsigned_value // second_evaluation.unsigned_value, self.number_type))
-        #stack.push(FixedNumber(((first_evaluation.value & 0xffffffffffffffff)//(second_evaluation.value & 0xffffffffffffffff)) & 0xffffffffffffffff, self.number_type))
+        # stack.push(FixedNumber(((first_evaluation.value & 0xffffffffffffffff)//(second_evaluation.value & 0xffffffffffffffff)) & 0xffffffffffffffff, self.number_type))
         # TODO cazul in care ai integer overflow
 
 
@@ -168,13 +168,58 @@ class ShlExpression(BinaryEvaluation):
         first_evaluation, second_evaluation = self.check_and_evaluate(stack, local_variables)
         if first_evaluation.number_type == NumberType.i32:
             if second_evaluation.value >= 0:
-                stack.push(FixedNumber( (first_evaluation.value * (2 ** (second_evaluation.value % 32))), self.number_type))
+                stack.push(FixedNumber((first_evaluation.value * (2 ** (second_evaluation.value % 32))), self.number_type))
             else:
                 stack.push(FixedNumber(first_evaluation.value * (2 ** (32 - abs(second_evaluation.value) % 32)), self.number_type))
         else:
             if second_evaluation.value >= 0:
-                stack.push(FixedNumber( (first_evaluation.value * (2 ** (second_evaluation.value % 64))), self.number_type))
+                stack.push(FixedNumber((first_evaluation.value * (2 ** (second_evaluation.value % 64))), self.number_type))
             else:
                 stack.push(FixedNumber(first_evaluation.value * (2 ** (64 - abs(second_evaluation.value) % 64)), self.number_type))
 
 
+class ShrsExpression(BinaryEvaluation):
+    def evaluate(self, stack: Stack, local_variables: VariableWatch = None, global_variables=None) -> None:
+        super().evaluate(stack, local_variables)
+        first_evaluation, second_evaluation = self.check_and_evaluate(stack, local_variables)
+        if first_evaluation.number_type == NumberType.i32:
+            stack.push(FixedNumber(first_evaluation.value >> (abs(second_evaluation.value) % 32), self.number_type))
+        else:
+            stack.push(FixedNumber(first_evaluation.value >> (abs(second_evaluation.value) % 64), self.number_type))
+
+class ShruExpression(BinaryEvaluation):
+    def evaluate(self, stack: Stack, local_variables: VariableWatch = None, global_variables=None) -> None:
+        super().evaluate(stack, local_variables)
+        first_evaluation, second_evaluation = self.check_and_evaluate(stack, local_variables)
+        if first_evaluation.number_type == NumberType.i32:
+            if second_evaluation.value >= 0 or second_evaluation.value % 32 == 0:
+                result = first_evaluation.value >> (abs(second_evaluation.value) % 32)
+                mask = 0xffffffff
+                for i in range(abs(second_evaluation.value) % 32):
+                    mask = mask - (1 << (32 - abs(second_evaluation.value)%32+i))
+                result = result & mask
+                stack.push(FixedNumber(result, self.number_type))
+            else:
+                result = first_evaluation.value >> (32 - abs(second_evaluation.value) % 32)
+                mask = 0xffffffff
+                for i in range(32 - abs(second_evaluation.value) % 32):
+                    mask = mask - (1 << (32 - abs(second_evaluation.value) % 32 - i))
+
+                result = result & mask
+                stack.push(FixedNumber(result, self.number_type))
+        else:
+            if second_evaluation.value >= 0 or second_evaluation.value % 64 == 0:
+                result = first_evaluation.value >> (abs(second_evaluation.value) % 64)
+                mask = 0xffffffffffffffff
+                for i in range(abs(second_evaluation.value) % 64):
+                    mask = mask - (1 << (64 - abs(second_evaluation.value) % 64 + i))
+                result = result & mask
+                stack.push(FixedNumber(result, self.number_type))
+            else:
+                result = first_evaluation.value >> (64 - abs(second_evaluation.value) % 64)
+                mask = 0xffffffffffffffff
+                for i in range(64 - abs(second_evaluation.value) % 64):
+                    mask = mask - (1 << (64 - abs(second_evaluation.value) % 64 - i))
+
+                result = result & mask
+                stack.push(FixedNumber(result, self.number_type))

@@ -1,4 +1,3 @@
-
 (module
   (func (export "add") (param $x i64) (param $y i64) (result i64) (i64.add (local.get $x) (local.get $y)))
   (func (export "sub") (param $x i64) (param $y i64) (result i64) (i64.sub (local.get $x) (local.get $y)))
@@ -35,5 +34,20 @@
 )
 
 
-
-(assert_return (invoke "shl" (i64.const 1) (i64.const 0x7fffffffffffffff)) (i64.const 0x8000000000000000))
+(assert_return (invoke "shr_u" (i64.const 1) (i64.const 1)) (i64.const 0))
+(assert_return (invoke "shr_u" (i64.const 1) (i64.const 0)) (i64.const 1))
+(assert_return (invoke "shr_u" (i64.const -1) (i64.const 1)) (i64.const 0x7fffffffffffffff))
+(assert_return (invoke "shr_u" (i64.const 0x7fffffffffffffff) (i64.const 1)) (i64.const 0x3fffffffffffffff))
+(assert_return (invoke "shr_u" (i64.const 0x8000000000000000) (i64.const 1)) (i64.const 0x4000000000000000))
+(assert_return (invoke "shr_u" (i64.const 0x4000000000000000) (i64.const 1)) (i64.const 0x2000000000000000))
+(assert_return (invoke "shr_u" (i64.const 1) (i64.const 64)) (i64.const 1))
+(assert_return (invoke "shr_u" (i64.const 1) (i64.const 65)) (i64.const 0))
+(assert_return (invoke "shr_u" (i64.const 1) (i64.const -1)) (i64.const 0))
+(assert_return (invoke "shr_u" (i64.const 1) (i64.const 0x7fffffffffffffff)) (i64.const 0))
+(assert_return (invoke "shr_u" (i64.const 1) (i64.const 0x8000000000000000)) (i64.const 1))
+(assert_return (invoke "shr_u" (i64.const 0x8000000000000000) (i64.const 63)) (i64.const 1))
+(assert_return (invoke "shr_u" (i64.const -1) (i64.const 64)) (i64.const -1))
+(assert_return (invoke "shr_u" (i64.const -1) (i64.const 65)) (i64.const 0x7fffffffffffffff))
+(assert_return (invoke "shr_u" (i64.const -1) (i64.const -1)) (i64.const 1))
+(assert_return (invoke "shr_u" (i64.const -1) (i64.const 0x7fffffffffffffff)) (i64.const 1))
+(assert_return (invoke "shr_u" (i64.const -1) (i64.const 0x8000000000000000)) (i64.const -1))
