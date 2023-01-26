@@ -9,7 +9,7 @@ from instantiate import create_expression
 from expressions import SExpression
 from assertions import AssertExpression
 
-
+WARNING_CODE = '\033[93m'
 FAIL_CODE = '\033[91m'
 ENDC = '\033[0m'
 
@@ -64,5 +64,14 @@ if __name__ == '__main__':
     if not exists(args.input_file):
         raise FileNotFoundError(f'File {args.input_file} not found!')
 
+    # if DEBUG:
+    #     open('not_implemented.txt', 'w').close()
 
     check_asserts(args.input_file)
+
+    if DEBUG:
+        not_implemented_set: set[str]
+        with open('not_implemented.txt', 'r') as not_implemented_file:
+            not_implemented_set = set(not_implemented_file.read().splitlines())
+        with open('not_implemented.txt', 'w') as not_implemented_file:
+            not_implemented_file.write('\n'.join(not_implemented_set))
