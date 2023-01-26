@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from math import floor, ceil
 
-from custom_exceptions import InvalidSyntaxError, DivisionByZeroError
+from custom_exceptions import InvalidSyntaxError, DivisionByZeroError, IntegerOverflowError
 from enums import NumberType
 
 from evaluations import BinaryEvaluation, UnaryEvaluation
@@ -111,10 +111,9 @@ class DivSignedExpression(BinaryEvaluation):
             result = ceil(result)
         else:
             result = floor(result)
-        try:
-            result = int(first_evaluation.value / second_evaluation.value)
-        except OverflowError as e:
-            raise OverflowError()  # TODO
+        if (self.number_type == NumberType.i32 and not FixedNumber.can_be_reprezented_in_32_bits(result)) or \
+                (self.number_type == NumberType.i64 and not FixedNumber.can_be_reprezented_in_64_bits(result)):
+            raise IntegerOverflowError()
         stack.push(FixedNumber(result, self.number_type))
 
 

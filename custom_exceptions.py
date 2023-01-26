@@ -9,7 +9,8 @@ if TYPE_CHECKING:
 
 EXCEPTION_NAMES: dict[str, list[str]] = {
     'type mismatch': ['InvalidNumberTypeError', 'EmptyOperandError'],
-    'integer divide by zero': ['DivisionByZeroError']
+    'integer divide by zero': ['DivisionByZeroError'],
+    'integer overflow': ['IntegerOverflowError'],
 }
 
 
@@ -83,4 +84,11 @@ class DivisionByZeroError(WebAssemblyException):
 
     def __init__(self):
         message: str = 'Division by zero'
+        super().__init__(message)
+
+
+class IntegerOverflowError(WebAssemblyException):
+
+    def __init__(self):
+        message: str = f'Integer overflow: value is too large'
         super().__init__(message)
