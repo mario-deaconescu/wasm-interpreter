@@ -41,9 +41,9 @@ def check_asserts(input_file_name: str) -> None:
             asserted: bool = expression.assert_expression()
             if asserted:
                 number_of_correct_assertions += 1
-                print(f'Assertion #{assertion_index} of type "{expression}" was successful!')
+                print(f'Assertion #{assertion_index} of type "{expression}" was successful! ({expression.expression_name})')
             else:
-                print(f'{FAIL_CODE}Assertion #{assertion_index} of type "{expression}" was unsuccessful!{ENDC}')
+                print(f'{FAIL_CODE}Assertion #{assertion_index} of type "{expression}" was unsuccessful! ({expression.expression_name}) {ENDC}')
             assertion_index += 1
     print()
     print(f'Correct assertions: {number_of_correct_assertions}/{assertion_index}.')

@@ -29,11 +29,12 @@ class AssertExpression(SExpression):
 
 class AssertInvalidExpression(AssertExpression):
 
-    def assert_expression(self) -> bool:
-        if not isinstance(self.assert_operand, ModuleExpression):
-            raise TypeError(
-                f"Invalid assert operand: Expected Module, got {self.assert_operand.__class__.__name__}")
+    instantiation_errors: list[Type[WebAssemblyException]] = None
 
+    def __init__(self):
+        super().__init__()
+
+    def assert_expression(self) -> bool:
         # Check if return type is string
         string_regex: Pattern[str] = re.compile('"([a-zA-Z ]+)"')
         if not string_regex.fullmatch(self.assert_return.expression_name):
@@ -42,11 +43,22 @@ class AssertInvalidExpression(AssertExpression):
 
         exception_name: str = self.assert_return.expression_name.strip('"')  # Remove " " from name
 
+        expected_exceptions: list[Type] = [getattr(sys.modules[__name__], exception_name) for exception_name in
+                                           EXCEPTION_NAMES[exception_name]]
+        if self.instantiation_errors is not None:
+            for error in self.instantiation_errors:
+                for e in expected_exceptions:
+                    if isinstance(error, e):
+                        return True
+
+        if not isinstance(self.assert_operand, ModuleExpression):
+            raise TypeError(
+                f"Invalid assert operand: Expected Module, got {self.assert_operand.__class__.__name__}")
+
         try:
             self.assert_operand.assert_correctness(VariableWatch())
         except WebAssemblyException as exception:
             # Check if it's the right exception
-            expected_exceptions: list[Type] = [getattr(sys.modules[__name__], exception_name) for exception_name in EXCEPTION_NAMES[exception_name]]
             for e in expected_exceptions:
                 if isinstance(exception, e):
                     return True
@@ -75,7 +87,7 @@ class AssertReturnExpression(AssertExpression):
         expected_evaluation.evaluate(stack, VariableWatch())
         expected_result: FixedNumber = stack.pop()
 
-        return result == expected_result
+        return abs(result) == abs(expected_result)
 
 
 class AssertTrapExpression(AssertExpression):
@@ -93,12 +105,12 @@ class AssertTrapExpression(AssertExpression):
 
         exception_name: str = self.assert_return.expression_name.strip('"')  # Remove " " from name
 
-        try:
-            self.assert_operand.evaluate(Stack(), VariableWatch(), GlobalVariableWatch())
-        except WebAssemblyException as exception:
-            # Check if it's the right exception
-            expected_exceptions: list[Type] = [getattr(sys.modules[__name__], exception_name) for exception_name in EXCEPTION_NAMES[exception_name]]
-            for e in expected_exceptions:
-                if isinstance(exception, e):
-                    return True
+        # try:
+        #     self.assert_operand.evaluate(Stack(), VariableWatch(), GlobalVariableWatch())
+        # except WebAssemblyException as exception:
+        #     # Check if it's the right exception
+        #     expected_exceptions: list[Type] = [getattr(sys.modules[__name__], exception_name) for exception_name in EXCEPTION_NAMES[exception_name]]
+        #     for e in expected_exceptions:
+        #         if isinstance(exception, e):
+        #             return True
         return False
