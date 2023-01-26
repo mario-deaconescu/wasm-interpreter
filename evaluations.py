@@ -6,7 +6,7 @@ from dataclasses import dataclass
 from custom_exceptions import InvalidNumberTypeError, UnknownVariableError, EmptyOperandError
 from enums import NumberType
 from expressions import SExpression
-from variables import FixedNumber, VariableWatch, Stack, GlobalVariableWatch
+from variables import FixedNumber, VariableWatch, Stack, GlobalVariableWatch, Memory
 
 
 @dataclass
@@ -65,17 +65,21 @@ class BinaryEvaluation(Evaluation):
 
     @property
     def first_operand(self) -> Evaluation:
+        if len(self.children) < 2:
+            raise EmptyOperandError(2)
         return self.children[0]
 
     @property
     def second_operand(self) -> Evaluation:
+        if len(self.children) < 2:
+            raise EmptyOperandError(2)
         return self.children[1]
 
     def __init__(self, _=None) -> None:
         super().__init__()
+        if len(self.children) < 2:
+            raise EmptyOperandError(2)
         self.number_type = NumberType(self.expression_name[:3])
-        if len(self.children) != 2:
-            raise ValueError(f"Invalid number of operand for add operation ({len(self.children)})")
 
     def assert_correctness(self, local_variables: VariableWatch, global_variables=None) -> NumberType:
         return_type1: NumberType = self.first_operand.assert_correctness(local_variables)
@@ -86,7 +90,7 @@ class BinaryEvaluation(Evaluation):
             raise InvalidNumberTypeError(FixedNumber(0, return_type2), self.number_type)
         return self.number_type
 
-    def check_and_evaluate(self, stack: Stack, local_variables: VariableWatch = None) -> tuple[
+    def check_and_evaluate(self, stack: Stack, local_variables: VariableWatch = None, global_variables: VariableWatch = None) -> tuple[
         FixedNumber, FixedNumber]:
         self.first_operand.evaluate(stack, local_variables)
         first_evaluation: FixedNumber = stack.pop()
@@ -174,3 +178,31 @@ class LoadExpression(UnaryEvaluation):
         if global_variables is None:
             global_variables = VariableWatch()
         self.operand.evaluate(stack, local_variables, global_variables)
+
+
+class MemoryGrowExpression(UnaryEvaluation):
+    number_type: NumberType = None
+
+    def __init__(self):
+        super().__init__(numeric=False)
+
+    def evaluate(self, stack: Stack, local_variables: VariableWatch = None, global_variables=None) -> None:
+        super().evaluate(stack, local_variables, global_variables)
+        self.operand.evaluate(stack, local_variables, global_variables)
+        Memory().grow(stack.pop().value)
+
+    def assert_correctness(self, local_variables: VariableWatch, global_variables=None) -> None:
+        self.operand.assert_correctness(local_variables, global_variables)
+
+
+class StoreExpression(BinaryEvaluation):
+    number_type: NumberType = None
+
+    def __init__(self):
+        super().__init__()
+
+    def evaluate(self, stack: Stack, local_variables: VariableWatch = None, global_variables=None) -> None:
+        super().evaluate(stack, local_variables, global_variables)
+        first_evaluation, second_evaluation = self.check_and_evaluate(stack, local_variables, global_variables)
+        Memory()[first_evaluation.value] = second_evaluation
+

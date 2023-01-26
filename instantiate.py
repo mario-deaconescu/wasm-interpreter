@@ -46,6 +46,8 @@ CLASSES_DICT: dict[str, str] = {
     'tablefuncref': 'TableFunctionExpression',
     'type': 'TypeExpression',
     'call_indirect': 'CallIndirectExpression',
+    'memory.grow': 'MemoryGrowExpression',
+    'store': 'StoreExpression',
 }
 
 
