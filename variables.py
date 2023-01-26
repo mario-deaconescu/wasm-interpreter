@@ -115,6 +115,14 @@ class FixedNumber:
     def __abs__(self) -> int | float:
         return self.unsigned_value
 
+    @staticmethod
+    def can_be_reprezented_in_32_bits(number: int):
+        return -2147483648 <= number <= 2147483647
+
+    @staticmethod
+    def can_be_reprezented_in_64_bits(number: int):
+        return -9223372036854775808 <= number <= 9223372036854775807
+
 
 def assert_number_type(number: int | float, number_type: NumberType) -> int | float:
     def can_be_represented_in_32_bits(f: float):

@@ -55,13 +55,13 @@ class AssertInvalidExpression(AssertExpression):
             raise TypeError(
                 f"Invalid assert operand: Expected Module, got {self.assert_operand.__class__.__name__}")
 
-        try:
-            self.assert_operand.assert_correctness(VariableWatch())
-        except WebAssemblyException as exception:
-            # Check if it's the right exception
-            for e in expected_exceptions:
-                if isinstance(exception, e):
-                    return True
+        # try:
+        #     self.assert_operand.assert_correctness(VariableWatch())
+        # except WebAssemblyException as exception:
+        #     # Check if it's the right exception
+        #     for e in expected_exceptions:
+        #         if isinstance(exception, e):
+        #             return True
         return False
 
 
@@ -105,12 +105,12 @@ class AssertTrapExpression(AssertExpression):
 
         exception_name: str = self.assert_return.expression_name.strip('"')  # Remove " " from name
 
-        # try:
-        #     self.assert_operand.evaluate(Stack(), VariableWatch(), GlobalVariableWatch())
-        # except WebAssemblyException as exception:
-        #     # Check if it's the right exception
-        #     expected_exceptions: list[Type] = [getattr(sys.modules[__name__], exception_name) for exception_name in EXCEPTION_NAMES[exception_name]]
-        #     for e in expected_exceptions:
-        #         if isinstance(exception, e):
-        #             return True
+        try:
+            self.assert_operand.evaluate(Stack(), VariableWatch(), GlobalVariableWatch())
+        except WebAssemblyException as exception:
+            # Check if it's the right exception
+            expected_exceptions: list[Type] = [getattr(sys.modules[__name__], exception_name) for exception_name in EXCEPTION_NAMES[exception_name]]
+            for e in expected_exceptions:
+                if isinstance(exception, e):
+                    return True
         return False

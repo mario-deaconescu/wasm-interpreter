@@ -68,6 +68,9 @@ CLASSES_DICT: dict[str, str] = {
     'mul': 'MulExpression',
 }
 
+WARNING_CODE = '\033[93m'
+FAIL_CODE = '\033[91m'
+ENDC = '\033[0m'
 
 def create_expression(expression_string: str, **kwargs) -> SExpression:
     instance = SExpression()
@@ -128,9 +131,13 @@ def create_expression(expression_string: str, **kwargs) -> SExpression:
     if new_type in CLASSES_DICT.keys():
         instance.__class__ = getattr(sys.modules[__name__], CLASSES_DICT[new_type])
 
-    if kwargs.get('debug', False) and instance.__class__ == SExpression:
-        raise NotImplementedError(f'Not implemented {instance.expression_name}!')
-
+    if instance.__class__ == SExpression:
+        if kwargs.get('debug', False):
+            raise NotImplementedError(f'Not implemented {instance.expression_name}!')
+        else:
+            with open('not_implemented.txt', 'a') as f:
+                f.write(f'{instance.expression_name}\n')
+            print(f'{WARNING_CODE}Not implemented {instance.expression_name}!{ENDC}')
     c = []
     for x in children_parentheses:
         try:
