@@ -87,6 +87,17 @@ class FixedNumber:
     def value(self) -> int | float:
         return self._value
 
+    @property
+    def unsigned_value(self) -> int:
+        if self.number_type in [NumberType.f32, NumberType.f64]:
+            return self._value
+        if self.number_type == NumberType.i32:
+            mask = 0x80000000
+        else:
+            mask = 0x8000000000000000
+        return (self._value & (mask - 1)) + (self._value & mask)
+
+
     @value.setter
     def value(self, new_value: int | float):
         self._value = assert_number_type(new_value, self.number_type)
@@ -118,13 +129,9 @@ def assert_number_type(number: int | float, number_type: NumberType) -> int | fl
 
     # Overflow
     if number_type == NumberType.i32:
-        number = number & 0xFFFFFFFF
-        if number < 0:
-            number = -0xF00000000 + number
+        number = (number & 0x7FFFFFFF) + (number & 0x80000000) * (1 if number > 0 else -1)
     elif number_type == NumberType.i64:
-        number = number & 0xFFFFFFFFFFFFFFFF
-        if number < 0:
-            number = -0xF0000000000000000 + number
+        number = (number & 0x7FFFFFFFFFFFFFFF) + (number & 0x8000000000000000) * (1 if number > 0 else -1)
     elif number_type == NumberType.f32 and not can_be_represented_in_32_bits(number):
         number = ctypes.c_float(number)
     return number
