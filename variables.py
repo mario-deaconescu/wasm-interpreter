@@ -112,6 +112,9 @@ class FixedNumber:
             raise InvalidNumberTypeError(self, other.number_type)
         return self.value == other.value
 
+    def __abs__(self) -> int | float:
+        return self.unsigned_value
+
 
 def assert_number_type(number: int | float, number_type: NumberType) -> int | float:
     def can_be_represented_in_32_bits(f: float):
