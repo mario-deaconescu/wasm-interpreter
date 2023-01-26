@@ -162,9 +162,19 @@ class XorExpression(BinaryEvaluation):
         stack.push(FixedNumber(twos_complement(first_evaluation.value ^ second_evaluation.value, 64), self.number_type))
 
 
-
-
-
-
+class ShlExpression(BinaryEvaluation):
+    def evaluate(self, stack: Stack, local_variables: VariableWatch = None, global_variables=None) -> None:
+        super().evaluate(stack, local_variables)
+        first_evaluation, second_evaluation = self.check_and_evaluate(stack, local_variables)
+        if first_evaluation.number_type == NumberType.i32:
+            if second_evaluation.value >= 0:
+                stack.push(FixedNumber( (first_evaluation.value * (2 ** (second_evaluation.value % 32))), self.number_type))
+            else:
+                stack.push(FixedNumber(first_evaluation.value * (2 ** (32 - abs(second_evaluation.value) % 32)), self.number_type))
+        else:
+            if second_evaluation.value >= 0:
+                stack.push(FixedNumber( (first_evaluation.value * (2 ** (second_evaluation.value % 64))), self.number_type))
+            else:
+                stack.push(FixedNumber(first_evaluation.value * (2 ** (64 - abs(second_evaluation.value) % 64)), self.number_type))
 
 
