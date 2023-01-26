@@ -140,3 +140,52 @@ def assert_number_type(number: int | float, number_type: NumberType) -> int | fl
 @singleton
 class GlobalVariableWatch(VariableWatch):
     pass
+
+
+@singleton
+class Memory:
+    PAGE_SIZE = 65536
+    _memory: bytearray = bytearray()
+
+    def __init__(self, pages: int = 1):
+        super().__init__()
+        self._memory = bytearray(pages * self.PAGE_SIZE)
+
+    def grow(self, pages: int):
+        self._memory += bytearray(pages * self.PAGE_SIZE)
+
+    def __setitem__(self, index: int, value: FixedNumber):
+        if index < 0:
+            raise IndexError(f"Cannot access memory at negative index {index}")
+        if index >= len(self._memory):
+            raise IndexError(f"Cannot access memory at index {index} because it is out of bounds")
+        if value.number_type == NumberType.i32:
+            for byte_index in range(4):
+                self._memory[index + byte_index] = (value.unsigned_value >> (8 * byte_index)) & 0xFF
+        elif value.number_type == NumberType.i64:
+            for byte_index in range(8):
+                self._memory[index + byte_index] = (value.unsigned_value >> (8 * byte_index)) & 0xFF
+        elif value.number_type == NumberType.f32:
+            for byte_index in range(4):
+                self._memory[index + byte_index] = (value.value >> (8 * byte_index)) & 0xFF
+        elif value.number_type == NumberType.f64:
+            for byte_index in range(8):
+                self._memory[index + byte_index] = (value.value >> (8 * byte_index)) & 0xFF
+
+    def __getitem__(self, index_tuple: tuple[int, NumberType]) -> FixedNumber:
+        index, number_type = index_tuple
+        if index < 0:
+            raise IndexError(f"Cannot access memory at negative index {index}")
+        if index >= len(self._memory):
+            raise IndexError(f"Cannot access memory at index {index} because it is out of bounds")
+        if number_type == NumberType.i32:
+            return FixedNumber(int.from_bytes(self._memory[index:index + 4], byteorder='little', signed=True), NumberType.i32)
+        elif number_type == NumberType.i64:
+            return FixedNumber(int.from_bytes(self._memory[index:index + 8], byteorder='little', signed=True), NumberType.i64)
+        elif number_type == NumberType.f32:
+            return FixedNumber(ctypes.c_float(int.from_bytes(self._memory[index:index + 4], byteorder='little', signed=True)).value, NumberType.f32)
+        elif number_type == NumberType.f64:
+            return FixedNumber(ctypes.c_double(int.from_bytes(self._memory[index:index + 8], byteorder='little', signed=True)).value, NumberType.f64)
+
+
+
