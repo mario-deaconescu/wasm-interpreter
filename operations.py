@@ -90,3 +90,19 @@ class MulExpression(BinaryEvaluation):
         super().evaluate(stack, local_variables)
         first_evaluation, second_evaluation = self.check_and_evaluate(stack, local_variables)
         stack.push(FixedNumber(first_evaluation.value * second_evaluation.value, self.number_type))
+
+class DivSignedExpression(BinaryEvaluation):
+
+    def evaluate(self, stack: Stack, local_variables: VariableWatch = None, global_variables=None) -> None:
+        super().evaluate(stack, local_variables)
+        first_evaluation, second_evaluation = self.check_and_evaluate(stack, local_variables)
+        stack.push(FixedNumber(round(first_evaluation.value / second_evaluation.value), self.number_type))
+        # TODO The instruction throws a runtime exception if the divisor is zero or if the result is not representable as an integer
+
+class DivUnsignedExpression(BinaryEvaluation):
+
+    def evaluate(self, stack: Stack, local_variables: VariableWatch = None, global_variables = None) -> None:
+        super().evaluate(stack, local_variables)
+        first_evaluation, second_evaluatation = self.check_and_evaluate(stack, local_variables)
+        stack.push(FixedNumber((first_evaluation//second_evaluatation)&0xffffffff, self.number_type))
+        # TODO cazul in care seecond_evaluation este 0
