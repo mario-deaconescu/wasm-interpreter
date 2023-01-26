@@ -107,6 +107,12 @@ class DivSignedExpression(BinaryEvaluation):
     def evaluate(self, stack: Stack, local_variables: VariableWatch = None, global_variables=None) -> None:
         super().evaluate(stack, local_variables)
         first_evaluation, second_evaluation = self.check_and_evaluate(stack, local_variables)
+
+        def twos_complement(val: int, bits: int) -> int:
+            if (val & (1 << (bits - 1))) != 0:
+                val = val - (1 << bits)
+            return val
+
         if second_evaluation.value == 0:
             raise DivisionByZeroError()
         result = first_evaluation.value / second_evaluation.value
@@ -117,7 +123,12 @@ class DivSignedExpression(BinaryEvaluation):
         if (self.number_type == NumberType.i32 and not FixedNumber.can_be_reprezented_in_32_bits(result)) or \
                 (self.number_type == NumberType.i64 and not FixedNumber.can_be_reprezented_in_64_bits(result)):
             raise IntegerOverflowError()
-        stack.push(FixedNumber(result, self.number_type))
+        if first_evaluation.number_type == NumberType.i32:
+            nBits = 32
+        else:
+            nBits = 64
+        print(hex(twos_complement(result, nBits)))
+        stack.push(FixedNumber(twos_complement(result, nBits), self.number_type))
 
 
 class DivUnsignedExpression(BinaryEvaluation):
@@ -131,17 +142,19 @@ class DivUnsignedExpression(BinaryEvaluation):
         # stack.push(FixedNumber(((first_evaluation.value & 0xffffffffffffffff)//(second_evaluation.value & 0xffffffffffffffff)) & 0xffffffffffffffff, self.number_type))
         # TODO cazul in care ai integer overflow
 
+
 class RemsExpression(BinaryEvaluation):
 
     def evaluate(self, stack: Stack, local_variables: VariableWatch = None, global_variables=None) -> None:
         super().evaluate(stack, local_variables)
         first_evaluation, second_evaluation = self.check_and_evaluate(stack, local_variables)
         if second_evaluation.value == 0:
-            raise DivisionByZeroError() #TODO
+            raise DivisionByZeroError()  # TODO
         if first_evaluation.value >= 0:
             stack.push(FixedNumber(first_evaluation.value % abs(second_evaluation.value), self.number_type))
         else:
-            stack.push(FixedNumber(0-(abs(first_evaluation.value) % abs(second_evaluation.value)), self.number_type))
+            stack.push(FixedNumber(0 - (abs(first_evaluation.value) % abs(second_evaluation.value)), self.number_type))
+
 
 class RemuExpression(BinaryEvaluation):
 
@@ -149,7 +162,7 @@ class RemuExpression(BinaryEvaluation):
         super().evaluate(stack, local_variables)
         first_evaluation, second_evaluation = self.check_and_evaluate(stack, local_variables)
         if second_evaluation.value == 0:
-            raise DivisionByZeroError() #TODO
+            raise DivisionByZeroError()  # TODO
         stack.push(FixedNumber(first_evaluation.unsigned_value % second_evaluation.unsigned_value, self.number_type))
 
 
@@ -168,6 +181,7 @@ class OrExpression(BinaryEvaluation):
             if (val & (1 << (bits - 1))) != 0:
                 val = val - (1 << bits)
             return val
+
         super().evaluate(stack, local_variables)
         first_evaluation, second_evaluation = self.check_and_evaluate(stack, local_variables)
         stack.push(FixedNumber(twos_complement(first_evaluation.value | second_evaluation.value, 64), self.number_type))
@@ -191,14 +205,18 @@ class ShlExpression(BinaryEvaluation):
         first_evaluation, second_evaluation = self.check_and_evaluate(stack, local_variables)
         if first_evaluation.number_type == NumberType.i32:
             if second_evaluation.value >= 0:
-                stack.push(FixedNumber((first_evaluation.value * (2 ** (second_evaluation.value % 32))), self.number_type))
+                stack.push(
+                    FixedNumber((first_evaluation.value * (2 ** (second_evaluation.value % 32))), self.number_type))
             else:
-                stack.push(FixedNumber(first_evaluation.value * (2 ** (32 - abs(second_evaluation.value) % 32)), self.number_type))
+                stack.push(FixedNumber(first_evaluation.value * (2 ** (32 - abs(second_evaluation.value) % 32)),
+                                       self.number_type))
         else:
             if second_evaluation.value >= 0:
-                stack.push(FixedNumber((first_evaluation.value * (2 ** (second_evaluation.value % 64))), self.number_type))
+                stack.push(
+                    FixedNumber((first_evaluation.value * (2 ** (second_evaluation.value % 64))), self.number_type))
             else:
-                stack.push(FixedNumber(first_evaluation.value * (2 ** (64 - abs(second_evaluation.value) % 64)), self.number_type))
+                stack.push(FixedNumber(first_evaluation.value * (2 ** (64 - abs(second_evaluation.value) % 64)),
+                                       self.number_type))
 
 
 class ShrsExpression(BinaryEvaluation):
@@ -210,6 +228,7 @@ class ShrsExpression(BinaryEvaluation):
         else:
             stack.push(FixedNumber(first_evaluation.value >> (abs(second_evaluation.value) % 64), self.number_type))
 
+
 class ShruExpression(BinaryEvaluation):
     def evaluate(self, stack: Stack, local_variables: VariableWatch = None, global_variables=None) -> None:
         super().evaluate(stack, local_variables)
@@ -219,7 +238,7 @@ class ShruExpression(BinaryEvaluation):
                 result = first_evaluation.value >> (abs(second_evaluation.value) % 32)
                 mask = 0xffffffff
                 for i in range(abs(second_evaluation.value) % 32):
-                    mask = mask - (1 << (32 - abs(second_evaluation.value)%32+i))
+                    mask = mask - (1 << (32 - abs(second_evaluation.value) % 32 + i))
                 result = result & mask
                 stack.push(FixedNumber(result, self.number_type))
             else:
@@ -263,7 +282,7 @@ class RotlExpression(BinaryEvaluation):
             result = first_evaluation.value >> (nshiftl)
             mask = 0xffffffff
             for i in range(nshiftl):
-                mask = mask - (1 << (32 - nshiftl+i))
+                mask = mask - (1 << (32 - nshiftl + i))
             result = result & mask
 
             stack.push(FixedNumber(((first_evaluation.value << nshift) & 0xffffffff) + result, self.number_type))
@@ -279,10 +298,11 @@ class RotlExpression(BinaryEvaluation):
             result = first_evaluation.value >> (nshiftl)
             mask = 0xffffffffffffffff
             for i in range(nshiftl):
-                mask = mask - (1 << (64 - nshiftl+i))
+                mask = mask - (1 << (64 - nshiftl + i))
             result = result & mask
 
-            stack.push(FixedNumber(((first_evaluation.value << nshift) & 0xffffffffffffffff) + result, self.number_type))
+            stack.push(
+                FixedNumber(((first_evaluation.value << nshift) & 0xffffffffffffffff) + result, self.number_type))
 
 
 class RotrExpression(BinaryEvaluation):
@@ -300,7 +320,7 @@ class RotrExpression(BinaryEvaluation):
             result = first_evaluation.value >> (nshift)
             mask = 0xffffffff
             for i in range(nshift):
-                mask = mask - (1 << (32 - nshift+i))
+                mask = mask - (1 << (32 - nshift + i))
             result = result & mask
 
             stack.push(FixedNumber(((first_evaluation.value << nshiftl) & 0xffffffff) + result, self.number_type))
@@ -316,16 +336,18 @@ class RotrExpression(BinaryEvaluation):
             result = first_evaluation.value >> (nshift)
             mask = 0xffffffffffffffff
             for i in range(nshift):
-                mask = mask - (1 << (64 - nshift+i))
+                mask = mask - (1 << (64 - nshift + i))
             result = result & mask
 
-            stack.push(FixedNumber(((first_evaluation.value << nshiftl) & 0xffffffffffffffff) + result, self.number_type))
+            stack.push(
+                FixedNumber(((first_evaluation.value << nshiftl) & 0xffffffffffffffff) + result, self.number_type))
 
 
 class CtzExpression(UnaryEvaluation):
     def evaluate(self, stack: Stack, local_variables: VariableWatch = None, global_variables=None) -> None:
         super().evaluate(stack, local_variables)
         first_evaluation = self.check_and_evaluate(stack, local_variables)
+
         def count_t(number):
             count = 0
             if number & 1 == 1:
@@ -334,6 +356,7 @@ class CtzExpression(UnaryEvaluation):
                 count += 1
                 number = number >> 1
             return count
+
         if first_evaluation.value == 0:
             if first_evaluation.number_type == NumberType.i32:
                 stack.push(FixedNumber(32, self.number_type))
@@ -342,10 +365,12 @@ class CtzExpression(UnaryEvaluation):
         else:
             stack.push(FixedNumber(count_t(first_evaluation.value), self.number_type))
 
+
 class ClzExpression(UnaryEvaluation):
     def evaluate(self, stack: Stack, local_variables: VariableWatch = None, global_variables=None) -> None:
         super().evaluate(stack, local_variables)
         first_evaluation = self.check_and_evaluate(stack, local_variables)
+
         def count_l(number, nBits):
             count = 0
             for i in range(nBits, 0, -1):
@@ -404,6 +429,7 @@ class EqExpression(BinaryEvaluation):
         else:
             stack.push(FixedNumber(0, self.number_type))
 
+
 class EqzExpression(UnaryEvaluation):
     def evaluate(self, stack: Stack, local_variables: VariableWatch = None, global_variables=None) -> None:
         super().evaluate(stack, local_variables)
@@ -423,6 +449,7 @@ class NeExpression(BinaryEvaluation):
         else:
             stack.push(FixedNumber(0, self.number_type))
 
+
 class LtsExpression(BinaryEvaluation):
     def evaluate(self, stack: Stack, local_variables: VariableWatch = None, global_variables=None) -> None:
         super().evaluate(stack, local_variables)
@@ -431,3 +458,84 @@ class LtsExpression(BinaryEvaluation):
             stack.push(FixedNumber(1, self.number_type))
         else:
             stack.push(FixedNumber(0, self.number_type))
+
+
+class LtuExpression(BinaryEvaluation):
+    def evaluate(self, stack: Stack, local_variables: VariableWatch = None, global_variables=None) -> None:
+        super().evaluate(stack, local_variables)
+        first_evaluation, second_evaluation = self.check_and_evaluate(stack, local_variables)
+        if first_evaluation.unsigned_value < second_evaluation.unsigned_value:
+            stack.push(FixedNumber(1, self.number_type))
+        else:
+            stack.push(FixedNumber(0, self.number_type))
+
+
+class LesExpression(BinaryEvaluation):
+    def evaluate(self, stack: Stack, local_variables: VariableWatch = None, global_variables=None) -> None:
+        super().evaluate(stack, local_variables)
+        first_evaluation, second_evaluation = self.check_and_evaluate(stack, local_variables)
+        if first_evaluation.value <= second_evaluation.value:
+            stack.push(FixedNumber(1, self.number_type))
+        else:
+            stack.push(FixedNumber(0, self.number_type))
+
+
+class LeuExpression(BinaryEvaluation):
+    def evaluate(self, stack: Stack, local_variables: VariableWatch = None, global_variables=None) -> None:
+        super().evaluate(stack, local_variables)
+        first_evaluation, second_evaluation = self.check_and_evaluate(stack, local_variables)
+        if first_evaluation.unsigned_value <= second_evaluation.unsigned_value:
+            stack.push(FixedNumber(1, self.number_type))
+        else:
+            stack.push(FixedNumber(0, self.number_type))
+
+
+class GtsExpression(BinaryEvaluation):
+    def evaluate(self, stack: Stack, local_variables: VariableWatch = None, global_variables=None) -> None:
+        super().evaluate(stack, local_variables)
+        first_evaluation, second_evaluation = self.check_and_evaluate(stack, local_variables)
+        if first_evaluation.value > second_evaluation.value:
+            stack.push(FixedNumber(1, self.number_type))
+        else:
+            stack.push(FixedNumber(0, self.number_type))
+
+
+class GtuExpression(BinaryEvaluation):
+    def evaluate(self, stack: Stack, local_variables: VariableWatch = None, global_variables=None) -> None:
+        super().evaluate(stack, local_variables)
+        first_evaluation, second_evaluation = self.check_and_evaluate(stack, local_variables)
+        if first_evaluation.unsigned_value > second_evaluation.unsigned_value:
+            stack.push(FixedNumber(1, self.number_type))
+        else:
+            stack.push(FixedNumber(0, self.number_type))
+
+
+class GesExpression(BinaryEvaluation):
+    def evaluate(self, stack: Stack, local_variables: VariableWatch = None, global_variables=None) -> None:
+        super().evaluate(stack, local_variables)
+        first_evaluation, second_evaluation = self.check_and_evaluate(stack, local_variables)
+        if first_evaluation.value >= second_evaluation.value:
+            stack.push(FixedNumber(1, self.number_type))
+        else:
+            stack.push(FixedNumber(0, self.number_type))
+
+
+class GeuExpression(BinaryEvaluation):
+    def evaluate(self, stack: Stack, local_variables: VariableWatch = None, global_variables=None) -> None:
+        super().evaluate(stack, local_variables)
+        first_evaluation, second_evaluation = self.check_and_evaluate(stack, local_variables)
+        if first_evaluation.unsigned_value >= second_evaluation.unsigned_value:
+            stack.push(FixedNumber(1, self.number_type))
+        else:
+            stack.push(FixedNumber(0, self.number_type))
+
+
+class Extend8Expression(UnaryEvaluation):
+    def evaluate(self, stack: Stack, local_variables: VariableWatch = None, global_variables=None) -> None:
+        super().evaluate(stack, local_variables)
+        first_evaluation = self.check_and_evaluate(stack, local_variables)
+
+        def extend8_s(value: int) -> int:
+            return (value & 0xff) if value > 0 else (value | 0xffffff00)
+
+        stack.push(FixedNumber(extend8_s(first_evaluation.value), self.number_type))
