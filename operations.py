@@ -128,26 +128,6 @@ class DivUnsignedExpression(BinaryEvaluation):
         # stack.push(FixedNumber(((first_evaluation.value & 0xffffffffffffffff)//(second_evaluation.value & 0xffffffffffffffff)) & 0xffffffffffffffff, self.number_type))
         # TODO cazul in care ai integer overflow
 
-class RemsExpression(BinaryEvaluation):
-
-    def evaluate(self, stack: Stack, local_variables: VariableWatch = None, global_variables=None) -> None:
-        super().evaluate(stack, local_variables)
-        first_evaluation, second_evaluation = self.check_and_evaluate(stack, local_variables)
-        if second_evaluation.value == 0:
-            raise DivisionByZeroError() #TODO
-        if first_evaluation.value >= 0:
-            stack.push(FixedNumber(first_evaluation.value % abs(second_evaluation.value), self.number_type))
-        else:
-            stack.push(FixedNumber(0-(abs(first_evaluation.value) % abs(second_evaluation.value)), self.number_type))
-
-class RemuExpression(BinaryEvaluation):
-
-    def evaluate(self, stack: Stack, local_variables: VariableWatch = None, global_variables=None) -> None:
-        super().evaluate(stack, local_variables)
-        first_evaluation, second_evaluation = self.check_and_evaluate(stack, local_variables)
-        if second_evaluation.value == 0:
-            raise DivisionByZeroError() #TODO
-        stack.push(FixedNumber(first_evaluation.unsigned_value % second_evaluation.unsigned_value, self.number_type))
 
 class AndExpression(BinaryEvaluation):
 
@@ -390,39 +370,3 @@ class PopcntExpression(UnaryEvaluation):
                     number = (number << 1) & 0xffffffff
             stack.push(FixedNumber(count, self.number_type))
 
-class EqExpression(BinaryEvaluation):
-    def evaluate(self, stack: Stack, local_variables: VariableWatch = None, global_variables=None) -> None:
-        super().evaluate(stack, local_variables)
-        first_evaluation, second_evaluation = self.check_and_evaluate(stack, local_variables)
-        if first_evaluation.value == second_evaluation.value:
-            stack.push(FixedNumber(1, self.number_type))
-        else:
-            stack.push(FixedNumber(0, self.number_type))
-
-class EqzExpression(UnaryEvaluation):
-    def evaluate(self, stack: Stack, local_variables: VariableWatch = None, global_variables=None) -> None:
-        super().evaluate(stack, local_variables)
-        first_evaluation = self.check_and_evaluate(stack, local_variables)
-        if first_evaluation.value == 0:
-            stack.push(FixedNumber(1, self.number_type))
-        else:
-            stack.push(FixedNumber(0, self.number_type))
-
-
-class NeExpression(BinaryEvaluation):
-    def evaluate(self, stack: Stack, local_variables: VariableWatch = None, global_variables=None) -> None:
-        super().evaluate(stack, local_variables)
-        first_evaluation, second_evaluation = self.check_and_evaluate(stack, local_variables)
-        if first_evaluation.value != second_evaluation.value:
-            stack.push(FixedNumber(1, self.number_type))
-        else:
-            stack.push(FixedNumber(0, self.number_type))
-
-class LtsExpression(BinaryEvaluation):
-    def evaluate(self, stack: Stack, local_variables: VariableWatch = None, global_variables=None) -> None:
-        super().evaluate(stack, local_variables)
-        first_evaluation, second_evaluation = self.check_and_evaluate(stack, local_variables)
-        if first_evaluation.value < second_evaluation.value:
-            stack.push(FixedNumber(1, self.number_type))
-        else:
-            stack.push(FixedNumber(0, self.number_type))
