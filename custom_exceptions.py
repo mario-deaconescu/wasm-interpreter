@@ -8,7 +8,8 @@ if TYPE_CHECKING:
     from variables import FixedNumber, NumberVariable
 
 EXCEPTION_NAMES: dict[str, list[str]] = {
-    'type mismatch': ['InvalidNumberTypeError', 'EmptyOperandError']
+    'type mismatch': ['InvalidNumberTypeError', 'EmptyOperandError'],
+    'integer divide by zero': ['DivisionByZeroError']
 }
 
 
@@ -75,4 +76,11 @@ class EmptyOperandError(WebAssemblyException):
     def __init__(self, expected_operands: int):
         self.expected_operands = expected_operands
         message: str = f'Expected {expected_operands} operands'
+        super().__init__(message)
+
+
+class DivisionByZeroError(WebAssemblyException):
+
+    def __init__(self):
+        message: str = 'Division by zero'
         super().__init__(message)

@@ -9,7 +9,7 @@ from typing import Pattern, Type
 from custom_exceptions import *
 from evaluations import Evaluation
 from expressions import SExpression, ModuleExpression
-from variables import VariableWatch, FixedNumber, Stack
+from variables import VariableWatch, FixedNumber, Stack, GlobalVariableWatch
 
 
 class AssertExpression(SExpression):
@@ -76,3 +76,29 @@ class AssertReturnExpression(AssertExpression):
         expected_result: FixedNumber = stack.pop()
 
         return result == expected_result
+
+
+class AssertTrapExpression(AssertExpression):
+
+    def assert_expression(self) -> bool:
+        if not isinstance(self.assert_operand, Evaluation):
+            raise TypeError(
+                f"Invalid assert operand: Expected Evaluation, got {self.assert_operand.__class__.__name__}")
+
+        # Check if return type is string
+        string_regex: Pattern[str] = re.compile('"([a-zA-Z ]+)"')
+        if not string_regex.fullmatch(self.assert_return.expression_name):
+            raise TypeError(
+                f"Invalid assert result: Expected string, got {self.assert_operand.expression_name}")
+
+        exception_name: str = self.assert_return.expression_name.strip('"')  # Remove " " from name
+
+        try:
+            self.assert_operand.evaluate(Stack(), VariableWatch(), GlobalVariableWatch())
+        except WebAssemblyException as exception:
+            # Check if it's the right exception
+            expected_exceptions: list[Type] = [getattr(sys.modules[__name__], exception_name) for exception_name in EXCEPTION_NAMES[exception_name]]
+            for e in expected_exceptions:
+                if isinstance(exception, e):
+                    return True
+        return False

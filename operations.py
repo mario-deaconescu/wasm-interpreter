@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from custom_exceptions import InvalidSyntaxError
+from custom_exceptions import InvalidSyntaxError, DivisionByZeroError
 from enums import NumberType
 
 from evaluations import BinaryEvaluation, UnaryEvaluation
@@ -96,8 +96,9 @@ class DivSignedExpression(BinaryEvaluation):
     def evaluate(self, stack: Stack, local_variables: VariableWatch = None, global_variables=None) -> None:
         super().evaluate(stack, local_variables)
         first_evaluation, second_evaluation = self.check_and_evaluate(stack, local_variables)
-        stack.push(FixedNumber(round(first_evaluation.value / second_evaluation.value), self.number_type))
-        # TODO The instruction throws a runtime exception if the divisor is zero or if the result is not representable as an integer
+        if second_evaluation.value == 0:
+            raise DivisionByZeroError()
+        stack.push(FixedNumber(first_evaluation.value // second_evaluation.value, self.number_type))
 
 class DivUnsignedExpression(BinaryEvaluation):
 

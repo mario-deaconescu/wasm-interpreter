@@ -54,7 +54,7 @@ class FunctionExpression(Evaluation):
                 # raise TypeError("Expression can not be evaluated")
                 pass
 
-    def initialize_parameters(self, local_variables: VariableWatch,
+    def initialize_parameters(self, local_variables: VariableWatch, global_variables: GlobalVariableWatch,
                               *args: NumberVariable | FixedNumber) \
             -> VariableWatch:
         # Check parameters
@@ -75,10 +75,10 @@ class FunctionExpression(Evaluation):
         for evaluation in self.children:
             evaluation.assert_correctness(local_variables)
 
-    def evaluate(self, stack: Stack, local_variables: VariableWatch = None, global_variables=None) -> None:
-        super().evaluate(stack, local_variables)
+    def evaluate(self, stack: Stack, local_variables: VariableWatch = None, global_variables=None, *args: FixedNumber) -> None:
+        super().evaluate(stack, local_variables, global_variables)
         # Check parameters
-        local_variables = self.initialize_parameters(local_variables, *args)
+        local_variables = self.initialize_parameters(local_variables, global_variables, *args)
         for evaluation in self.children:
             evaluation.evaluate(stack, local_variables)
 
@@ -101,7 +101,7 @@ class InvokeExpression(Evaluation):
         for evaluation in self.children:
             evaluation.evaluate(stack, local_variables)
             parameters.append(stack.pop())
-        self.function.evaluate(stack, local_variables)
+        self.function.evaluate(stack, local_variables, global_variables, *parameters)
 
     def __str__(self):
         return f'{super().__str__()}({self.function.export_as})'
