@@ -297,3 +297,77 @@ class RotrExpression(BinaryEvaluation):
             result = result & mask
 
             stack.push(FixedNumber(((first_evaluation.value << nshiftl) & 0xffffffffffffffff) + result, self.number_type))
+
+
+class CtzExpression(UnaryEvaluation):
+    def evaluate(self, stack: Stack, local_variables: VariableWatch = None, global_variables=None) -> None:
+        super().evaluate(stack, local_variables)
+        first_evaluation = self.check_and_evaluate(stack, local_variables)
+        def count_t(number):
+            count = 0
+            if number & 1 == 1:
+                return 0
+            while (number & 1) == 0:
+                count += 1
+                number = number >> 1
+            return count
+        if first_evaluation.value == 0:
+            if first_evaluation.number_type == NumberType.i32:
+                stack.push(FixedNumber(32, self.number_type))
+            else:
+                stack.push(FixedNumber(64, self.number_type))
+        else:
+            stack.push(FixedNumber(count_t(first_evaluation.value), self.number_type))
+
+class ClzExpression(UnaryEvaluation):
+    def evaluate(self, stack: Stack, local_variables: VariableWatch = None, global_variables=None) -> None:
+        super().evaluate(stack, local_variables)
+        first_evaluation = self.check_and_evaluate(stack, local_variables)
+        def count_l(number, nBits):
+            count = 0
+            for i in range(nBits, 0, -1):
+                if (number & (1 << i)) >> i == 0:
+                    count += 1
+                else:
+                    break
+            return count
+
+        ok = 0
+        if first_evaluation.number_type == NumberType.i32:
+            nBits = 31
+            if first_evaluation.value == 0:
+                stack.push(FixedNumber(32, self.number_type))
+                ok = 1
+
+        else:
+            nBits = 63
+            if first_evaluation.value == 0:
+                stack.push(FixedNumber(64, self.number_type))
+                ok = 1
+        if ok == 0:
+            print(count_l(first_evaluation.value, nBits))
+            stack.push(FixedNumber(count_l(first_evaluation.value, nBits), self.number_type))
+
+
+class PopcntExpression(UnaryEvaluation):
+    def evaluate(self, stack: Stack, local_variables: VariableWatch = None, global_variables=None) -> None:
+        super().evaluate(stack, local_variables)
+        first_evaluation = self.check_and_evaluate(stack, local_variables)
+        number = first_evaluation.value
+        count = 0
+        if first_evaluation.value == 0:
+            stack.push(FixedNumber(0, self.number_type))
+        else:
+            if first_evaluation.number_type == NumberType.i32:
+                nBits = 31
+            else:
+                nBits = 63
+            while number != 0:
+                if (number & (1 << nBits)) >> nBits == 1:
+                    count += 1
+                if nBits == 63:
+                    number = (number << 1) & 0xffffffffffffffff
+                else:
+                    number = (number << 1) & 0xffffffff
+            stack.push(FixedNumber(count, self.number_type))
+

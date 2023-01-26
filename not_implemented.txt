@@ -1,8 +1,5 @@
 i64.rem_s
 i64.rem_u
-i64.clz
-i64.ctz
-i64.popcnt
 i64.extend8_s
 i64.extend16_s
 i64.extend32_s
@@ -18,9 +15,6 @@ i64.ge_s
 i64.ge_u
 i32.rem_s
 i32.rem_u
-i32.clz
-i32.ctz
-i32.popcnt
 i32.extend8_s
 i32.extend16_s
 i32.eq
