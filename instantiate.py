@@ -54,6 +54,7 @@ CLASSES_DICT: dict[str, str] = {
     'ge_u': 'GeuExpression',
     'ctz': 'CtzExpression',
     'extend8_s': 'Extend8Expression',
+    'extend16_s': 'Extend16Expression',
     'div_s': 'DivSignedExpression',
     'div_u': 'DivUnsignedExpression',
     'rem_s': 'RemsExpression',

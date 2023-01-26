@@ -530,6 +530,7 @@ class GeuExpression(BinaryEvaluation):
             stack.push(FixedNumber(0, self.number_type))
 
 
+
 class Extend8Expression(UnaryEvaluation):
     def evaluate(self, stack: Stack, local_variables: VariableWatch = None, global_variables=None) -> None:
         super().evaluate(stack, local_variables)
