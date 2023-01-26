@@ -11,6 +11,7 @@ EXCEPTION_NAMES: dict[str, list[str]] = {
     'type mismatch': ['InvalidNumberTypeError', 'EmptyOperandError'],
     'integer divide by zero': ['DivisionByZeroError'],
     'integer overflow': ['IntegerOverflowError'],
+    'unexpected token': ['UnexpectedTokenError'],
 }
 
 
@@ -91,4 +92,12 @@ class IntegerOverflowError(WebAssemblyException):
 
     def __init__(self):
         message: str = f'Integer overflow: value is too large'
+        super().__init__(message)
+
+
+class UnexpectedTokenError(WebAssemblyException):
+
+    def __init__(self, token: str):
+        self.token = token
+        message: str = f'Unexpected token: "{token}"'
         super().__init__(message)

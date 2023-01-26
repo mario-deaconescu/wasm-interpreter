@@ -28,6 +28,7 @@ CLASSES_DICT: dict[str, str] = {
     'assert_return': 'AssertReturnExpression',
     'assert_invalid': 'AssertInvalidExpression',
     'assert_trap': 'AssertTrapExpression',
+    'assert_malformed': 'AssertInvalidExpression',
     'add': 'AddExpression',
     'sub': 'SubExpression',
     'and': 'AndExpression',
@@ -115,6 +116,10 @@ def create_expression(expression_string: str, **kwargs) -> SExpression:
     instance.expression_name = split_expression[0]
     if len(split_expression) > 1:
         children_string = split_expression[1]
+
+    # Special case fot quote
+    if children_string.startswith('quote'):
+        children_string = children_string.split(' ', 1)[1].strip('"')
 
     children_parentheses: list[str] = SExpression.get_parentheses(children_string)
     if len(children_parentheses) > 0 and children_parentheses[0].startswith('$'):

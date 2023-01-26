@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from math import floor, ceil
 
-from custom_exceptions import InvalidSyntaxError, DivisionByZeroError, IntegerOverflowError
+from custom_exceptions import InvalidSyntaxError, DivisionByZeroError, IntegerOverflowError, UnexpectedTokenError
 from enums import NumberType
 
 from evaluations import BinaryEvaluation, UnaryEvaluation
@@ -56,10 +56,13 @@ class ConstExpression(UnaryEvaluation):
     def __init__(self, _=None) -> None:
         super().__init__()
         value: int | float
-        if self.number_type == NumberType.i32 or self.number_type == NumberType.i64:
-            value = int(self.operand.expression_name, 0)
-        else:
-            value = float(self.operand.expression_name)
+        try:
+            if self.number_type == NumberType.i32 or self.number_type == NumberType.i64:
+                value = int(self.operand.expression_name, 0)
+            else:
+                value = float(self.operand.expression_name)
+        except ValueError:
+            raise UnexpectedTokenError(str(self.operand.expression_name))
         if self.operand.expression_name.startswith("0x"):
             if self.number_type == NumberType.i32 and (value & 0x80000000):
                 value = -0x80000000 + (value & 0x7fffffff)
