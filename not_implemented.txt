@@ -3,8 +3,6 @@ i64.rem_u
 i64.extend8_s
 i64.extend16_s
 i64.extend32_s
-i64.eq
-i64.ne
 i64.lt_s
 i64.lt_u
 i64.le_s
@@ -17,8 +15,6 @@ i32.rem_s
 i32.rem_u
 i32.extend8_s
 i32.extend16_s
-i32.eq
-i32.ne
 i32.lt_s
 i32.lt_u
 i32.le_s
