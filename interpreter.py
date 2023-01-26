@@ -64,4 +64,5 @@ if __name__ == '__main__':
     if not exists(args.input_file):
         raise FileNotFoundError(f'File {args.input_file} not found!')
 
+
     check_asserts(args.input_file)
