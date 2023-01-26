@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from math import floor, ceil
+
 from custom_exceptions import InvalidSyntaxError, DivisionByZeroError
 from enums import NumberType
 
@@ -58,6 +60,11 @@ class ConstExpression(UnaryEvaluation):
             value = int(self.operand.expression_name, 0)
         else:
             value = float(self.operand.expression_name)
+        if self.operand.expression_name.startswith("0x"):
+            if self.number_type == NumberType.i32 and (value & 0x80000000):
+                value = -0x80000000 + (value & 0x7fffffff)
+            elif self.number_type == NumberType.i64 and (value & 0x8000000000000000):
+                value = -0x8000000000000000 + (value & 0x7fffffffffffffff)
         self.value = FixedNumber(value, self.number_type)
 
     def assert_correctness(self, local_variables: VariableWatch, global_variables=None) -> NumberType:
@@ -99,7 +106,12 @@ class DivSignedExpression(BinaryEvaluation):
         first_evaluation, second_evaluation = self.check_and_evaluate(stack, local_variables)
         if second_evaluation.value == 0:
             raise DivisionByZeroError()
-        stack.push(FixedNumber(first_evaluation.value // second_evaluation.value, self.number_type))
+        result = first_evaluation.value / second_evaluation.value
+        if result < 0:
+            result = ceil(result)
+        else:
+            result = floor(result)
+        stack.push(FixedNumber(result, self.number_type))
 
 
 class DivUnsignedExpression(BinaryEvaluation):
@@ -107,8 +119,11 @@ class DivUnsignedExpression(BinaryEvaluation):
     def evaluate(self, stack: Stack, local_variables: VariableWatch = None, global_variables=None) -> None:
         super().evaluate(stack, local_variables)
         first_evaluation, second_evaluation = self.check_and_evaluate(stack, local_variables)
-        stack.push(FixedNumber(((first_evaluation.value & 0xffffffffffffffff)//(second_evaluation.value & 0xffffffffffffffff)) & 0xffffffffffffffff, self.number_type))
-        # TODO cazul in care second_evaluation este 0 si integer overflow
+        if second_evaluation.value == 0:
+            raise DivisionByZeroError()
+        stack.push(FixedNumber(first_evaluation.unsigned_value // second_evaluation.unsigned_value, self.number_type))
+        #stack.push(FixedNumber(((first_evaluation.value & 0xffffffffffffffff)//(second_evaluation.value & 0xffffffffffffffff)) & 0xffffffffffffffff, self.number_type))
+        # TODO cazul in care integer overflow
 
 
 class AndExpression(BinaryEvaluation):
