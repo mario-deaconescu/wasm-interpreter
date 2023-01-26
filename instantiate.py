@@ -99,18 +99,6 @@ def create_expression(expression_string: str, **kwargs) -> SExpression:
         instance.name = children_parentheses[0][1:]
         children_parentheses.pop(0)
 
-    c = []
-    for x in children_parentheses:
-        c.append(create_expression(x))
-    instance.children = c
-
-    # Check if expression has a name
-    if len(instance.children) > 0 and instance.children[0].expression_name[0] == '$':
-        # The name is the variable name without the '$'
-        instance.name = instance.children[0].expression_name[1:]
-        # Remove the variable name from the children
-        instance.children = instance.children[1:]
-
     # Check if it's a predefined function
     new_type: str = instance.expression_name
     if re.fullmatch(r'.{3}\.([a-z_]+)', instance.expression_name) is not None:
@@ -122,6 +110,30 @@ def create_expression(expression_string: str, **kwargs) -> SExpression:
 
     if kwargs.get('debug', False) and instance.__class__ == SExpression:
         raise NotImplementedError(f'Not implemented {instance.expression_name}!')
+
+    c = []
+    for x in children_parentheses:
+        try:
+            c.append(create_expression(x))
+        except WebAssemblyException as e:
+            if not isinstance(instance, AssertInvalidExpression):
+                raise e
+            if instance.instantiation_errors is None:
+                instance.instantiation_errors = []
+            instance.instantiation_errors.append(e)
+            temp = SExpression()
+            temp.expression_name = "~invalid~"
+            c.append(temp)
+    instance.children = c
+
+    # Check if expression has a name
+    if len(instance.children) > 0 and instance.children[0].expression_name[0] == '$':
+        # The name is the variable name without the '$'
+        instance.name = instance.children[0].expression_name[1:]
+        # Remove the variable name from the children
+        instance.children = instance.children[1:]
+
+
 
     instance.__init__()
     return instance

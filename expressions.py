@@ -11,7 +11,7 @@ from variables import VariableWatch
 
 
 class SExpression:
-    expression_name: str
+    expression_name: str = ""
     name: str = None
     children: list[SExpression] = []
 
