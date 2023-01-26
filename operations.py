@@ -111,6 +111,10 @@ class DivSignedExpression(BinaryEvaluation):
             result = ceil(result)
         else:
             result = floor(result)
+        try:
+            result = int(first_evaluation.value / second_evaluation.value)
+        except OverflowError as e:
+            raise OverflowError() #TODO
         stack.push(FixedNumber(result, self.number_type))
 
 
@@ -123,7 +127,7 @@ class DivUnsignedExpression(BinaryEvaluation):
             raise DivisionByZeroError()
         stack.push(FixedNumber(first_evaluation.unsigned_value // second_evaluation.unsigned_value, self.number_type))
         #stack.push(FixedNumber(((first_evaluation.value & 0xffffffffffffffff)//(second_evaluation.value & 0xffffffffffffffff)) & 0xffffffffffffffff, self.number_type))
-        # TODO cazul in care integer overflow
+        # TODO cazul in care ai integer overflow
 
 
 class AndExpression(BinaryEvaluation):
@@ -156,3 +160,11 @@ class XorExpression(BinaryEvaluation):
         super().evaluate(stack, local_variables)
         first_evaluation, second_evaluation = self.check_and_evaluate(stack, local_variables)
         stack.push(FixedNumber(twos_complement(first_evaluation.value ^ second_evaluation.value, 64), self.number_type))
+
+
+
+
+
+
+
+
