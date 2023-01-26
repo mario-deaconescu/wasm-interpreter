@@ -91,6 +91,7 @@ class MulExpression(BinaryEvaluation):
         first_evaluation, second_evaluation = self.check_and_evaluate(stack, local_variables)
         stack.push(FixedNumber(first_evaluation.value * second_evaluation.value, self.number_type))
 
+
 class DivSignedExpression(BinaryEvaluation):
 
     def evaluate(self, stack: Stack, local_variables: VariableWatch = None, global_variables=None) -> None:
@@ -100,22 +101,43 @@ class DivSignedExpression(BinaryEvaluation):
             raise DivisionByZeroError()
         stack.push(FixedNumber(first_evaluation.value // second_evaluation.value, self.number_type))
 
+
 class DivUnsignedExpression(BinaryEvaluation):
 
-    def evaluate(self, stack: Stack, local_variables: VariableWatch = None, global_variables = None) -> None:
+    def evaluate(self, stack: Stack, local_variables: VariableWatch = None, global_variables=None) -> None:
         super().evaluate(stack, local_variables)
-        first_evaluation, second_evaluatation = self.check_and_evaluate(stack, local_variables)
-        stack.push(FixedNumber(((first_evaluation & 0xffffffffffffffff)//(second_evaluatation & 0xffffffffffffffff))&0xffffffffffffffff, self.number_type))
-        # TODO cazul in care seecond_evaluation este 0
+        first_evaluation, second_evaluation = self.check_and_evaluate(stack, local_variables)
+        stack.push(FixedNumber(((first_evaluation.value & 0xffffffffffffffff)//(second_evaluation.value & 0xffffffffffffffff)) & 0xffffffffffffffff, self.number_type))
+        # TODO cazul in care second_evaluation este 0 si integer overflow
+
 
 class AndExpression(BinaryEvaluation):
 
-    def evaluate(self, stack: Stack, local_variables: VariableWatch = None, global_variables = None) -> None:
+    def evaluate(self, stack: Stack, local_variables: VariableWatch = None, global_variables=None) -> None:
         super().evaluate(stack, local_variables)
         first_evaluation, second_evaluation = self.check_and_evaluate(stack, local_variables)
-        stack.push(FixedNumber(first_evaluation & second_evaluation, self.number_type))
+        stack.push(FixedNumber(first_evaluation.value & second_evaluation.value, self.number_type))
 
 
+class OrExpression(BinaryEvaluation):
+
+    def evaluate(self, stack: Stack, local_variables: VariableWatch = None, global_variables=None) -> None:
+        def twos_complement(val: int, bits: int) -> int:
+            if (val & (1 << (bits - 1))) != 0:
+                val = val - (1 << bits)
+            return val
+        super().evaluate(stack, local_variables)
+        first_evaluation, second_evaluation = self.check_and_evaluate(stack, local_variables)
+        stack.push(FixedNumber(twos_complement(first_evaluation.value | second_evaluation.value, 64), self.number_type))
 
 
+class XorExpression(BinaryEvaluation):
+    def evaluate(self, stack: Stack, local_variables: VariableWatch = None, global_variables=None) -> None:
+        def twos_complement(val: int, bits: int) -> int:
+            if (val & (1 << (bits - 1))) != 0:
+                val = val - (1 << bits)
+            return val
 
+        super().evaluate(stack, local_variables)
+        first_evaluation, second_evaluation = self.check_and_evaluate(stack, local_variables)
+        stack.push(FixedNumber(twos_complement(first_evaluation.value ^ second_evaluation.value, 64), self.number_type))
