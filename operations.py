@@ -223,3 +223,77 @@ class ShruExpression(BinaryEvaluation):
 
                 result = result & mask
                 stack.push(FixedNumber(result, self.number_type))
+
+
+class RotlExpression(BinaryEvaluation):
+    def evaluate(self, stack: Stack, local_variables: VariableWatch = None, global_variables=None) -> None:
+        super().evaluate(stack, local_variables)
+        first_evaluation, second_evaluation = self.check_and_evaluate(stack, local_variables)
+        if first_evaluation.number_type == NumberType.i32:
+            if second_evaluation.value >= 0:
+                nshift = second_evaluation.value % 32
+            else:
+                nshift = 32 - abs(second_evaluation.value) % 32
+
+            nshiftl = 32 - nshift
+
+            result = first_evaluation.value >> (nshiftl)
+            mask = 0xffffffff
+            for i in range(nshiftl):
+                mask = mask - (1 << (32 - nshiftl+i))
+            result = result & mask
+
+            stack.push(FixedNumber(((first_evaluation.value << nshift) & 0xffffffff) + result, self.number_type))
+
+        else:
+            if second_evaluation.value >= 0:
+                nshift = second_evaluation.value % 64
+            else:
+                nshift = 64 - abs(second_evaluation.value) % 64
+
+            nshiftl = 64 - nshift
+
+            result = first_evaluation.value >> (nshiftl)
+            mask = 0xffffffffffffffff
+            for i in range(nshiftl):
+                mask = mask - (1 << (64 - nshiftl+i))
+            result = result & mask
+
+            stack.push(FixedNumber(((first_evaluation.value << nshift) & 0xffffffffffffffff) + result, self.number_type))
+
+
+class RotrExpression(BinaryEvaluation):
+    def evaluate(self, stack: Stack, local_variables: VariableWatch = None, global_variables=None) -> None:
+        super().evaluate(stack, local_variables)
+        first_evaluation, second_evaluation = self.check_and_evaluate(stack, local_variables)
+        if first_evaluation.number_type == NumberType.i32:
+            if second_evaluation.value >= 0:
+                nshift = second_evaluation.value % 32
+            else:
+                nshift = 32 - abs(second_evaluation.value) % 32
+
+            nshiftl = 32 - nshift
+
+            result = first_evaluation.value >> (nshift)
+            mask = 0xffffffff
+            for i in range(nshift):
+                mask = mask - (1 << (32 - nshift+i))
+            result = result & mask
+
+            stack.push(FixedNumber(((first_evaluation.value << nshiftl) & 0xffffffff) + result, self.number_type))
+
+        else:
+            if second_evaluation.value >= 0:
+                nshift = second_evaluation.value % 64
+            else:
+                nshift = 64 - abs(second_evaluation.value) % 64
+
+            nshiftl = 64 - nshift
+
+            result = first_evaluation.value >> (nshift)
+            mask = 0xffffffffffffffff
+            for i in range(nshift):
+                mask = mask - (1 << (64 - nshift+i))
+            result = result & mask
+
+            stack.push(FixedNumber(((first_evaluation.value << nshiftl) & 0xffffffffffffffff) + result, self.number_type))
