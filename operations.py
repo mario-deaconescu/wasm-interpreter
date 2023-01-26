@@ -104,11 +104,15 @@ class DivUnsignedExpression(BinaryEvaluation):
     def evaluate(self, stack: Stack, local_variables: VariableWatch = None, global_variables = None) -> None:
         super().evaluate(stack, local_variables)
         first_evaluation, second_evaluatation = self.check_and_evaluate(stack, local_variables)
-        stack.push(FixedNumber(((first_evaluation & 0xffffffff)//(second_evaluatation & 0xffffffff))&0xffffffff, self.number_type))
+        stack.push(FixedNumber(((first_evaluation & 0xffffffffffffffff)//(second_evaluatation & 0xffffffffffffffff))&0xffffffffffffffff, self.number_type))
         # TODO cazul in care seecond_evaluation este 0
 
+class AndExpression(BinaryEvaluation):
 
-
+    def evaluate(self, stack: Stack, local_variables: VariableWatch = None, global_variables = None) -> None:
+        super().evaluate(stack, local_variables)
+        first_evaluation, second_evaluation = self.check_and_evaluate(stack, local_variables)
+        stack.push(FixedNumber(first_evaluation & second_evaluation, self.number_type))
 
 
 
