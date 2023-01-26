@@ -51,7 +51,6 @@ CLASSES_DICT: dict[str, str] = {
     'rem_s': 'RemsExpression',
     'rem_u': 'RemuExpression',
     'const': 'ConstExpression',
-    'eqz': 'EqzExpression',
     'drop': 'DropExpression',
     'block': 'BlockExpression',
     'loop': 'LoopExpression',
