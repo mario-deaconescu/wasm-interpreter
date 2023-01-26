@@ -117,10 +117,10 @@ def assert_number_type(number: int | float, number_type: NumberType) -> int | fl
         raise InvalidNumberTypeError(FixedNumber(number, None), number_type)
 
     # Overflow
-    if number_type == NumberType.i32 and number > 0xFFFFFFFF:
-        number = number % 0x100000000
-    elif number_type == NumberType.i64 and number > 0xFFFFFFFFFFFFFFFF:
-        number = number % 0x10000000000000000
+    if number_type == NumberType.i32:
+        number = number & 0xFFFFFFFF
+    elif number_type == NumberType.i64:
+        number = number & 0xFFFFFFFFFFFFFFFF
     elif number_type == NumberType.f32 and not can_be_represented_in_32_bits(number):
         number = ctypes.c_float(number)
     return number
