@@ -54,7 +54,8 @@ CLASSES_DICT: dict[str, str] = {
     'ge_u': 'GeuExpression',
     'ctz': 'CtzExpression',
     'extend8_s': 'Extend8Expression',
-    #'extend16_s': 'Extend16Expression',
+    'extend16_s': 'Extend16Expression',
+    'extend32_s': 'Extend32Expression',
     'div_s': 'DivSignedExpression',
     'div_u': 'DivUnsignedExpression',
     'rem_s': 'RemsExpression',
@@ -80,7 +81,6 @@ CLASSES_DICT: dict[str, str] = {
 WARNING_CODE = '\033[93m'
 FAIL_CODE = '\033[91m'
 ENDC = '\033[0m'
-
 
 def create_expression(expression_string: str, **kwargs) -> SExpression:
     instance = SExpression()

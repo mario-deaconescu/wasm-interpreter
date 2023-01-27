@@ -531,8 +531,64 @@ class Extend8Expression(UnaryEvaluation):
     def evaluate(self, stack: Stack, local_variables: VariableWatch = None, global_variables=None) -> None:
         super().evaluate(stack, local_variables)
         first_evaluation = self.check_and_evaluate(stack, local_variables)
+        if first_evaluation.number_type == NumberType.i32:
+            def extend(value):
+                if value == 0:
+                    return 0
+                if (value & (1 << 7)) >> 7 == 0:
+                    return value & 0xff
+                else:
+                    return value | 0xffffff00
 
-        def extend8_s(value: int) -> int:
-            return (value & 0xff) if value > 0 else (value | 0xffffff00)
+            stack.push(FixedNumber(extend(first_evaluation.value), self.number_type))
+        else:
+            def extend(value):
+                if value == 0:
+                    return 0
+                if (value & (1 << 7)) >> 7 == 0:
+                    return value & 0xff
+                else:
+                    return value | 0xffffffffffffff00
 
-        stack.push(FixedNumber(extend8_s(first_evaluation.value), self.number_type))
+            stack.push(FixedNumber(extend(first_evaluation.value), self.number_type))
+
+
+class Extend16Expression(UnaryEvaluation):
+    def evaluate(self, stack: Stack, local_variables: VariableWatch = None, global_variables=None) -> None:
+        super().evaluate(stack, local_variables)
+        first_evaluation = self.check_and_evaluate(stack, local_variables)
+        if first_evaluation.number_type == NumberType.i32:
+            def extend(value):
+                if value == 0:
+                    return 0
+                if (value & (1 << 15)) >> 15 == 0:
+                    return value & 0xffff
+                else:
+                    return value | 0xffff0000
+
+            stack.push(FixedNumber(extend(first_evaluation.value), self.number_type))
+        else:
+            def extend(value):
+                if value == 0:
+                    return 0
+                if (value & (1 << 15)) >> 15 == 0:
+                    return value & 0xffff
+                else:
+                    return value | 0xffffffffffff0000
+
+            stack.push(FixedNumber(extend(first_evaluation.value), self.number_type))
+
+class Extend32Expression(UnaryEvaluation):
+    def evaluate(self, stack: Stack, local_variables: VariableWatch = None, global_variables=None) -> None:
+        super().evaluate(stack, local_variables)
+        first_evaluation = self.check_and_evaluate(stack, local_variables)
+
+        def extend(value):
+            if value == 0:
+                return 0
+            if (value & (1 << 31)) >> 31 == 0:
+                return value & 0xffffffff
+            else:
+                return value | 0xffffffff00000000
+
+        stack.push(FixedNumber(extend(first_evaluation.value), self.number_type))
