@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import decimal
 from math import floor, ceil
 
 from custom_exceptions import InvalidSyntaxError, DivisionByZeroError, IntegerOverflowError, UnexpectedTokenError
@@ -115,7 +116,7 @@ class DivSignedExpression(BinaryEvaluation):
 
         if second_evaluation.value == 0:
             raise DivisionByZeroError()
-        result = first_evaluation.value / second_evaluation.value
+        result = decimal.Decimal(first_evaluation.value) / decimal.Decimal(second_evaluation.value)
         if result < 0:
             result = ceil(result)
         else:
@@ -123,12 +124,7 @@ class DivSignedExpression(BinaryEvaluation):
         if (self.number_type == NumberType.i32 and not FixedNumber.can_be_reprezented_in_32_bits(result)) or \
                 (self.number_type == NumberType.i64 and not FixedNumber.can_be_reprezented_in_64_bits(result)):
             raise IntegerOverflowError()
-        if first_evaluation.number_type == NumberType.i32:
-            nBits = 32
-        else:
-            nBits = 64
-        print(hex(twos_complement(result, nBits)))
-        stack.push(FixedNumber(twos_complement(result, nBits), self.number_type))
+        stack.push(FixedNumber(result, self.number_type))
 
 
 class DivUnsignedExpression(BinaryEvaluation):
