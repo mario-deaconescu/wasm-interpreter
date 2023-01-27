@@ -7,13 +7,13 @@ from enums import NumberType
 from evaluations import Evaluation, UnaryEvaluation, EvaluationReport
 from expressions import ExportExpression, SExpression
 from operations import ParamExpression, ResultExpression
-from variables import VariableWatch, FixedNumber, NumberVariable, Stack
+from variables import VariableWatch, FixedNumber, NumberVariable, Stack, GlobalVariableWatch
 
 
 class FunctionExpression(Evaluation):
     export_as: str = None
     parameters: list[NumberVariable]
-    result_type: NumberType | None = None
+    result_type: list[NumberType] | None = None
 
     def __str__(self) -> str:
         representation: str = super().__str__()
@@ -40,14 +40,14 @@ class FunctionExpression(Evaluation):
         child_index: int = 0
         while child_index < len(self.children) and isinstance(self.children[child_index], ParamExpression):
             parameter_expression: ParamExpression = self.children[child_index]
-            self.parameters.append(NumberVariable(parameter_expression.number_type, parameter_expression.name))
+            self.parameters += [NumberVariable(number_type, parameter_expression.name) for number_type in parameter_expression.number_types]
             child_index += 1
         # Remove parameters from children
         self.children = self.children[child_index:]
         if len(self.children) > 0:
             if isinstance(self.children[0], ResultExpression):
                 result_expression: ResultExpression = self.children[0]
-                self.result_type = result_expression.number_type
+                self.result_types = result_expression.number_types
                 self.children = self.children[1:]
         for child in self.children:
             if not isinstance(child, Evaluation):
@@ -139,11 +139,11 @@ class CallIndirectExpression(CallExpression):
 
     def __init__(self) -> None:
         if not isinstance(self.children[0], TypeExpression):
-            raise EmptyOperandError(2)
+            EmptyOperandError.try_raise(2, Stack())
         self.type_expression: TypeExpression = self.children[0]
         self.children = self.children[1:]
         if not isinstance(self.children[0], Evaluation):
-            raise EmptyOperandError(2)
+            EmptyOperandError.try_raise(2, Stack())
         self.function_identifier = self.children[0]
         self.children = self.children[1:]
 
@@ -174,7 +174,7 @@ class TableFunctionExpression(Evaluation):
 
     def assert_correctness(self, local_variables: VariableWatch, global_variables=None) -> None:
         if len(self.children) != 1:
-            raise EmptyOperandError(1)
+            EmptyOperandError.try_raise(1, Stack())
 
 
 class ExpressionType(Enum):
@@ -186,7 +186,8 @@ class TypeExpression(UnaryEvaluation):
     expression_type: ExpressionType = None
 
     def __init__(self) -> None:
-        super().__init__(numeric=False)
+        super().__init__(numeric=False, skip_operand_check=True)
+        Stack().contract(1)
         self.expression_name, self.type_name = self.expression_name.split(' ')
         if len(self.children) != 1:
             return

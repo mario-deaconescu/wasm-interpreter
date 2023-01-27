@@ -5,7 +5,7 @@ from enums import NumberType
 
 if TYPE_CHECKING:
     from function import FunctionExpression
-    from variables import FixedNumber, NumberVariable
+    from variables import FixedNumber, NumberVariable, Stack
 
 EXCEPTION_NAMES: dict[str, list[str]] = {
     'type mismatch': ['InvalidNumberTypeError', 'EmptyOperandError'],
@@ -75,6 +75,13 @@ class StackEmptyError(WebAssemblyException):
 
 class EmptyOperandError(WebAssemblyException):
 
+    @staticmethod
+    def try_raise(expected_operands: int, stack: Stack | None = None):
+        if stack is None:
+            raise EmptyOperandError(expected_operands)
+        if len(stack) < expected_operands:
+            raise EmptyOperandError(expected_operands)
+        
     def __init__(self, expected_operands: int):
         self.expected_operands = expected_operands
         message: str = f'Expected {expected_operands} operands'

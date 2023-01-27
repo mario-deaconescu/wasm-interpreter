@@ -3,7 +3,7 @@ from __future__ import annotations
 from abc import abstractmethod
 from dataclasses import dataclass
 
-from custom_exceptions import InvalidNumberTypeError, UnknownVariableError, EmptyOperandError
+from custom_exceptions import InvalidNumberTypeError, UnknownVariableError, EmptyOperandError, UnexpectedTokenError
 from enums import NumberType
 from expressions import SExpression
 from variables import FixedNumber, VariableWatch, Stack, GlobalVariableWatch, Memory
@@ -39,17 +39,18 @@ class UnaryEvaluation(Evaluation):
     @property
     def operand(self) -> Evaluation:
         if len(self.children) == 0:
-            raise EmptyOperandError(1)
+            EmptyOperandError.try_raise(1, Stack())
         return self.children[0]
 
-    def __init__(self, numeric=True) -> None:
+    def __init__(self, numeric=True, **kwargs) -> None:
         super().__init__()
-        if len(self.children) < 1:
-            raise EmptyOperandError(1)
+        if len(self.children) < 1 and not kwargs.get('skip_operand_check', False): # Special check for TypeExpression
+            EmptyOperandError.try_raise(1, Stack())
         if numeric:
             self.number_type = NumberType(self.expression_name[:3])
             if isinstance(self.operand, Evaluation) and self.operand.number_type is not None and self.operand.number_type != self.number_type:
                 raise InvalidNumberTypeError(FixedNumber(None, self.operand.number_type), self.number_type)
+        Stack().expand(1)
 
     def assert_correctness(self, local_variables: VariableWatch, global_variables=None) -> NumberType:
         return_type: NumberType = self.operand.assert_correctness(local_variables)
@@ -70,24 +71,27 @@ class BinaryEvaluation(Evaluation):
     @property
     def first_operand(self) -> Evaluation:
         if len(self.children) < 2:
-            raise EmptyOperandError(2)
+            EmptyOperandError.try_raise(2, Stack())
+            return Stack().pop()
         return self.children[0]
 
     @property
     def second_operand(self) -> Evaluation:
         if len(self.children) < 2:
-            raise EmptyOperandError(2)
+            EmptyOperandError.try_raise(1, Stack())
+            return Stack().pop()
         return self.children[1]
 
     def __init__(self, _=None) -> None:
         super().__init__()
         if len(self.children) < 2:
-            raise EmptyOperandError(2)
+            EmptyOperandError.try_raise(2, Stack())
         self.number_type = NumberType(self.expression_name[:3])
-        if self.first_operand.number_type is not None and self.first_operand.number_type != self.number_type:
+        if isinstance(self.first_operand, Evaluation) and self.first_operand.number_type is not None and self.first_operand.number_type != self.number_type:
             raise InvalidNumberTypeError(FixedNumber(None, self.first_operand.number_type), self.number_type)
-        if self.second_operand.number_type is not None and self.second_operand.number_type != self.number_type:
+        if isinstance(self.second_operand, Evaluation) and self.second_operand.number_type is not None and self.second_operand.number_type != self.number_type:
             raise InvalidNumberTypeError(FixedNumber(None, self.second_operand.number_type), self.number_type)
+        Stack().expand(1)
 
     def check_and_evaluate(self, stack: Stack, local_variables: VariableWatch = None, global_variables: VariableWatch = None) -> tuple[
         FixedNumber, FixedNumber]:
@@ -108,6 +112,17 @@ class BinaryEvaluation(Evaluation):
 
 class LocalGetter(Evaluation):
 
+    def __init__(self):
+        super().__init__()
+        Stack().expand(1)
+        if self.name is None:
+            if len(self.children) == 0:
+                raise EmptyOperandError(1)
+            try:
+                self.name = int(self.children[0].expression_name)
+            except ValueError:
+                raise UnexpectedTokenError(self.children[0].expression_name)
+
     def evaluate(self, stack: Stack, local_variables: VariableWatch = None, global_variables=None) -> None:
         if self.name not in local_variables:
             raise UnknownVariableError(self.name)
@@ -126,9 +141,14 @@ class LocalSetter(UnaryEvaluation):
 
 class LocalExpression(Evaluation):
     number_type: NumberType = None
+    variable_name: str = None
 
     def __init__(self):
-        self.expression_name, number_string = self.expression_name.split(" ")
+        super().__init__()
+        if '$' in self.expression_name:
+            self.expression_name, self.variable_name, number_string = self.expression_name.split(" ")
+        else:
+            self.expression_name, number_string = self.expression_name.split(" ")
         self.number_type = NumberType(number_string)
 
     def evaluate(self, stack: Stack, local_variables: VariableWatch = None, global_variables=None) -> None:
@@ -204,4 +224,9 @@ class StoreExpression(BinaryEvaluation):
         super().evaluate(stack, local_variables, global_variables)
         first_evaluation, second_evaluation = self.check_and_evaluate(stack, local_variables, global_variables)
         Memory()[first_evaluation.value] = second_evaluation
+
+
+class NOPExpression(Evaluation):
+    def evaluate(self, stack: Stack, local_variables: VariableWatch = None, global_variables=None) -> None:
+        pass
 

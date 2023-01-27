@@ -8,6 +8,7 @@ from instantiate import create_expression
 
 from expressions import SExpression
 from assertions import AssertExpression
+from variables import Stack
 
 WARNING_CODE = '\033[93m'
 FAIL_CODE = '\033[91m'
@@ -19,7 +20,8 @@ DEBUG = True
 # Generator for more efficient parsing
 def read_expressions(input_file_name: str) -> Generator[SExpression, None, None]:
     with open(input_file_name, 'r') as input_file:
-        expression_string = input_file.read().replace('\n', '')
+        # Remove comments
+        expression_string: str = re.sub(r';.*', '', input_file.read()).replace('\n', '')
         expression_string = re.sub(" +", " ", expression_string)
     for index, string in enumerate(SExpression.get_parentheses(expression_string)):
         if DEBUG:
@@ -37,6 +39,7 @@ def check_asserts(input_file_name: str) -> None:
     number_of_correct_assertions: int = 0
     assertion_index: int = 0
     for expression in read_expressions(input_file_name):
+        Stack().init()
         if isinstance(expression, AssertExpression):
             asserted: bool = expression.assert_expression()
             if asserted:

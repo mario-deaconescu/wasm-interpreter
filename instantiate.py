@@ -76,6 +76,7 @@ CLASSES_DICT: dict[str, str] = {
     'memory.grow': 'MemoryGrowExpression',
     'store': 'StoreExpression',
     'mul': 'MulExpression',
+    'nop': 'NOPExpression',
 }
 
 WARNING_CODE = '\033[93m'
@@ -152,6 +153,17 @@ def create_expression(expression_string: str, **kwargs) -> SExpression:
             with open('not_implemented.txt', 'a') as f:
                 f.write(f'{instance.expression_name}\n')
             print(f'{WARNING_CODE}Not implemented {instance.expression_name}!{ENDC}')
+
+    initial_stack_size: int = len(Stack())
+    restore_stack: bool = False
+    if isinstance(instance, FunctionExpression) or \
+            isinstance(instance, BlockExpression) or \
+            isinstance(instance, LoopExpression) or \
+            isinstance(instance, IfExpression) or \
+            isinstance(instance, CallExpression):
+        restore_stack = True
+        Stack().init()
+
     c = []
     for x in children_parentheses:
         try:
@@ -174,7 +186,10 @@ def create_expression(expression_string: str, **kwargs) -> SExpression:
         # Remove the variable name from the children
         instance.children = instance.children[1:]
 
-
+    if restore_stack:
+        Stack().expand(initial_stack_size)
+    elif isinstance(instance, ThenExpression) or isinstance(instance, ElseExpression):  # Reset local stack
+        Stack().size_to(initial_stack_size)
 
     instance.__init__()
     return instance

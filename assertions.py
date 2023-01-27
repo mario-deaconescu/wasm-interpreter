@@ -20,7 +20,7 @@ class AssertExpression(SExpression):
 
     @property
     def assert_return(self) -> SExpression:
-        return self.children[1]
+        return self.children[1] if len(self.children) > 1 else None
 
     @abstractmethod
     def assert_expression(self) -> bool:
@@ -71,14 +71,16 @@ class AssertReturnExpression(AssertExpression):
         if not isinstance(self.assert_operand, Evaluation):
             raise TypeError(
                 f"Invalid assert operand: Expected Evaluation, got {self.assert_operand.__class__.__name__}")
-        if not isinstance(self.assert_return, Evaluation):
-            raise TypeError(f"Invalid assert result: Expected Evaluation, got {self.assert_return.__class__.__name__}")
 
         stack: Stack = Stack()
         if not isinstance(self.assert_operand, Evaluation):
             raise TypeError(f"Invalid assert operand: Expected Evaluation, got {self.assert_operand.__class__.__name__}")
         evaluation: Evaluation = self.assert_operand
         evaluation.evaluate(stack, VariableWatch())
+        # Special case for no return
+        if self.assert_return is None:
+            return len(stack) == 0
+
         result: FixedNumber = stack.pop()
 
         if not isinstance(self.assert_return, Evaluation):

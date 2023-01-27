@@ -3,32 +3,23 @@ from __future__ import annotations
 import decimal
 from math import floor, ceil
 
-from custom_exceptions import InvalidSyntaxError, DivisionByZeroError, IntegerOverflowError, UnexpectedTokenError
+from custom_exceptions import InvalidSyntaxError, DivisionByZeroError, IntegerOverflowError, UnexpectedTokenError, \
+    InvalidNumberTypeError, EmptyOperandError
 from enums import NumberType
 
-from evaluations import BinaryEvaluation, UnaryEvaluation
+from evaluations import BinaryEvaluation, UnaryEvaluation, Evaluation
 from expressions import SExpression
 from variables import VariableWatch, FixedNumber, Stack
 
 
 class NumberTypeExpression(SExpression):
-    number_type: NumberType
+    number_types: list[NumberType]
 
-    def __init__(self, _=None) -> None:
+    def __init__(self) -> None:
         super().__init__()
         if len(self.children) != 1:
             raise InvalidSyntaxError(f"Number expression has incorrect number of parameters ({len(self.children)})")
-        match self.children[0].expression_name:
-            case 'i32':
-                self.number_type = NumberType.i32
-            case 'i64':
-                self.number_type = NumberType.i64
-            case 'f32':
-                self.number_type = NumberType.f32
-            case 'f64':
-                self.number_type = NumberType.f64
-            case _:
-                raise ValueError("Invalid number type")
+        self.number_types = [NumberType(type_string) for type_string in self.children[0].expression_name.split(" ")]
         self.children = []
 
 
@@ -37,25 +28,17 @@ class ResultExpression(NumberTypeExpression):
 
 
 class ParamExpression(NumberTypeExpression):
-    pass
 
-
-class EqzExpression(UnaryEvaluation):
-
-    def evaluate(self, stack: Stack, local_variables: VariableWatch = None, global_variables=None) -> None:
-        super().evaluate(stack, local_variables)
-        evaluation: FixedNumber = self.check_and_evaluate(stack, local_variables)
-        if evaluation.value == 0:
-            stack.push(FixedNumber(1, self.number_type))
-        else:
-            stack.push(FixedNumber(0, self.number_type))
+    def __init__(self):
+        super().__init__()
+        Stack().expand(len(self.number_types))
 
 
 class ConstExpression(UnaryEvaluation):
     value: FixedNumber
 
     def __init__(self, _=None) -> None:
-        super().__init__()
+        super().__init__(no_input=True)
         value: int | float
         try:
             if self.number_type == NumberType.i32 or self.number_type == NumberType.i64:
@@ -427,6 +410,7 @@ class EqExpression(BinaryEvaluation):
 
 
 class EqzExpression(UnaryEvaluation):
+
     def evaluate(self, stack: Stack, local_variables: VariableWatch = None, global_variables=None) -> None:
         super().evaluate(stack, local_variables)
         first_evaluation = self.check_and_evaluate(stack, local_variables)
@@ -526,7 +510,6 @@ class GeuExpression(BinaryEvaluation):
             stack.push(FixedNumber(0, self.number_type))
 
 
-
 class Extend8Expression(UnaryEvaluation):
     def evaluate(self, stack: Stack, local_variables: VariableWatch = None, global_variables=None) -> None:
         super().evaluate(stack, local_variables)
@@ -577,6 +560,7 @@ class Extend16Expression(UnaryEvaluation):
                     return value | 0xffffffffffff0000
 
             stack.push(FixedNumber(extend(first_evaluation.value), self.number_type))
+
 
 class Extend32Expression(UnaryEvaluation):
     def evaluate(self, stack: Stack, local_variables: VariableWatch = None, global_variables=None) -> None:

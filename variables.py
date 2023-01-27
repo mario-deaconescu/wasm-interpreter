@@ -54,7 +54,7 @@ class VariableWatch:
 class Stack:
     _stack: list[Any] = []
 
-    def __init__(self, stack_size: int = 1024):
+    def init(self, stack_size: int = 1024):
         self._stack = []
         self._stack_size = stack_size
 
@@ -73,6 +73,21 @@ class Stack:
 
     def __del__(self):
         self._stack = []
+
+    def __len__(self):
+        return len(self._stack)
+
+    def expand(self, size: int):
+        self._stack += [None] * size
+
+    def contract(self, size: int):
+        self._stack = self._stack[:-size]
+
+    def size_to(self, size: int):
+        if len(self._stack) > size:
+            self.contract(len(self._stack) - size)
+        elif len(self._stack) < size:
+            self.expand(size - len(self._stack))
 
 
 @dataclass
