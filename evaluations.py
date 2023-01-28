@@ -3,9 +3,11 @@ from __future__ import annotations
 from abc import abstractmethod
 from dataclasses import dataclass
 
-from custom_exceptions import InvalidNumberTypeError, UnknownVariableError, EmptyOperandError, UnexpectedTokenError
+from custom_exceptions import InvalidNumberTypeError, UnknownVariableError, EmptyOperandError, UnexpectedTokenError, \
+    UnreachableError
 from enums import NumberType
 from expressions import SExpression
+from number_types import ResultExpression
 from variables import FixedNumber, VariableWatch, Stack, GlobalVariableWatch, Memory
 
 
@@ -19,6 +21,13 @@ class EvaluationReport:
 class Evaluation(SExpression):
     number_type: NumberType = None
     children: list[Evaluation]
+    result: ResultExpression = None
+
+    def __init__(self, **kwargs) -> None:
+        super().__init__()
+        if len(self.children) > 0 and isinstance(self.children[0], ResultExpression):
+            self.result = self.children[0]
+            self.children = self.children[1:]
 
     @abstractmethod
     def evaluate(self, stack: Stack, local_variables: VariableWatch = None, global_variables=None) -> None:
@@ -99,10 +108,18 @@ class BinaryEvaluation(Evaluation):
     def check_and_evaluate(self, stack: Stack, local_variables: VariableWatch = None,
                            global_variables: VariableWatch = None) -> tuple[
         FixedNumber, FixedNumber]:
-        self.first_operand.evaluate(stack, local_variables)
-        first_evaluation: FixedNumber = stack.pop()
-        self.second_operand.evaluate(stack, local_variables)
-        second_evaluation: FixedNumber = stack.pop()
+        first_operand = self.first_operand
+        if isinstance(first_operand, Evaluation):
+            first_operand.evaluate(stack, local_variables)
+            first_evaluation: FixedNumber = stack.pop()
+        elif isinstance(first_operand, FixedNumber):
+            first_evaluation: FixedNumber = first_operand
+        second_operand = self.second_operand
+        if isinstance(second_operand, Evaluation):
+            second_operand.evaluate(stack, local_variables)
+            second_evaluation: FixedNumber = stack.pop()
+        elif isinstance(second_operand, FixedNumber):
+            second_evaluation: FixedNumber = second_operand
         if not first_evaluation.number_type == self.number_type:
             raise InvalidNumberTypeError(first_evaluation, self.number_type)
         if not second_evaluation.number_type == self.number_type:
@@ -133,15 +150,23 @@ class LocalGetter(Evaluation):
         stack.push(local_variables[self.name])
 
 
-class LocalSetter(UnaryEvaluation):
+class LocalSetter(Evaluation):
 
     def __init__(self, **kwargs):
-        super().__init__(numeric=False)
+        super().__init__()
+        if self.name is None:
+            if len(self.children) == 0:
+                raise EmptyOperandError(1)
+            try:
+                self.name = int(self.children[0].expression_name)
+            except ValueError:
+                raise UnexpectedTokenError(self.children[0].expression_name)
+            self.children = self.children[1:]
 
     def evaluate(self, stack: Stack, local_variables: VariableWatch = None, global_variables=None) -> None:
         if self.name not in local_variables:
             raise UnknownVariableError(self.name)
-        self.operand.evaluate(stack, local_variables)
+        self.children[0].evaluate(stack, local_variables)
         local_variables[self.name] = stack.pop()
 
 
@@ -173,6 +198,8 @@ class LocalTee(LocalSetter):
 class GlobalGetter(Evaluation):
 
     def evaluate(self, stack: Stack, local_variables: VariableWatch = None, global_variables=None) -> None:
+        if global_variables is None:
+            global_variables = GlobalVariableWatch()
         if self.name not in global_variables:
             raise UnknownVariableError(self.name)
         stack.push(global_variables[self.name])
@@ -184,8 +211,8 @@ class GlobalSetter(UnaryEvaluation):
         super().__init__(numeric=False)
 
     def evaluate(self, stack: Stack, local_variables: VariableWatch = None, global_variables=None) -> None:
-        if self.name not in global_variables:
-            raise UnknownVariableError(self.name)
+        if global_variables is None:
+            global_variables = GlobalVariableWatch()
         if len(self.children) == 1:
             self.operand.evaluate(stack, local_variables)
             global_variables[self.name] = stack.pop()
@@ -203,6 +230,7 @@ class LoadExpression(UnaryEvaluation):
         if global_variables is None:
             global_variables = VariableWatch()
         self.operand.evaluate(stack, local_variables, global_variables)
+        stack.push(Memory()[stack.pop().value, self.number_type])
 
 
 class MemoryGrowExpression(UnaryEvaluation):
@@ -212,9 +240,11 @@ class MemoryGrowExpression(UnaryEvaluation):
         super().__init__(numeric=False)
 
     def evaluate(self, stack: Stack, local_variables: VariableWatch = None, global_variables=None) -> None:
+        initial_size = Memory().allocated
         super().evaluate(stack, local_variables, global_variables)
         self.operand.evaluate(stack, local_variables, global_variables)
         Memory().grow(stack.pop().value)
+        stack.push(FixedNumber(initial_size, NumberType.i32))
 
     def assert_correctness(self, local_variables: VariableWatch, global_variables=None) -> None:
         self.operand.assert_correctness(local_variables, global_variables)
@@ -235,3 +265,8 @@ class StoreExpression(BinaryEvaluation):
 class NOPExpression(Evaluation):
     def evaluate(self, stack: Stack, local_variables: VariableWatch = None, global_variables=None) -> None:
         pass
+
+
+class UnreachableExpression(Evaluation):
+    def evaluate(self, stack: Stack, local_variables: VariableWatch = None, global_variables=None) -> None:
+        raise UnreachableError()

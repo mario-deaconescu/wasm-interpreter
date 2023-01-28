@@ -12,6 +12,7 @@ EXCEPTION_NAMES: dict[str, list[str]] = {
     'integer divide by zero': ['DivisionByZeroError'],
     'integer overflow': ['IntegerOverflowError'],
     'unexpected token': ['UnexpectedTokenError'],
+    'undefined element': ['UndefinedElementError'],
 }
 
 
@@ -107,4 +108,17 @@ class UnexpectedTokenError(WebAssemblyException):
     def __init__(self, token: str):
         self.token = token
         message: str = f'Unexpected token: "{token}"'
+        super().__init__(message)
+
+
+class UndefinedElementError(WebAssemblyException):
+
+        def __init__(self, message: str = 'Undefined Element!'):
+            super().__init__(message)
+
+
+class UnreachableError(WebAssemblyException):
+
+    def __init__(self):
+        message: str = 'Unreachable code'
         super().__init__(message)

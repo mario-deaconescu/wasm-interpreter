@@ -77,6 +77,8 @@ CLASSES_DICT: dict[str, str] = {
     'store': 'StoreExpression',
     'mul': 'MulExpression',
     'nop': 'NOPExpression',
+    'elem': 'ElementExpression',
+    'br': 'BranchExpression',
 }
 
 WARNING_CODE = '\033[93m'

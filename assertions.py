@@ -35,7 +35,7 @@ class AssertInvalidExpression(AssertExpression):
 
     instantiation_errors: list[Type[WebAssemblyException]] = None
 
-    def __init__(self):
+    def __init__(self, **kwargs):
         super().__init__()
 
     def assert_expression(self) -> bool:

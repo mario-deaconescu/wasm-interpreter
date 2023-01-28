@@ -38,6 +38,11 @@ class SExpression:
                     raise InvalidSyntaxError(f'Expression "{expression}" has invalid parentheses')
                 current_parenthesis += expression[index:next_parenthesis.end()]
             else:
+                if next_parenthesis.start() > 0 and open_parentheses == 0 and len(parentheses) == 0:
+                    # We might have an operator
+                    operator = expression[:next_parenthesis.start()].strip(' ')
+                    if operator:
+                        parentheses.append(operator)
                 open_parentheses += 1
                 if open_parentheses == 1:
                     # This is the first parenthesis in this set
@@ -96,4 +101,3 @@ class ExportExpression(SExpression):
         # Remove "" from name
         self.export_name = self.children[0].expression_name[1:-1]
         self.children = []
-

@@ -166,7 +166,9 @@ def assert_number_type(number: int | float, number_type: NumberType) -> int | fl
 
 @singleton
 class GlobalVariableWatch(VariableWatch):
-    pass
+
+    def __init__(self):
+        pass
 
 
 @singleton
@@ -180,6 +182,10 @@ class Memory:
 
     def grow(self, pages: int):
         self._memory += bytearray(pages * self.PAGE_SIZE)
+
+    @property
+    def allocated(self):
+        return len(self._memory) // self.PAGE_SIZE
 
     def __setitem__(self, index: int, value: FixedNumber):
         if index < 0:

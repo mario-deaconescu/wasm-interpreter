@@ -3,30 +3,35 @@ from __future__ import annotations
 from dataclasses import dataclass
 
 from custom_exceptions import EmptyOperandError
-from evaluations import Evaluation, LocalGetter
+from evaluations import Evaluation, LocalGetter, EvaluationReport
 from function import TypeExpression
-from operations import ResultExpression, ParamExpression
+from number_types import ResultExpression, ParamExpression
 from variables import Stack, VariableWatch
 
 
 class BlockExpression(Evaluation):
 
-    def evaluate(self, stack: Stack, local_variables: VariableWatch = None, global_variables=None) -> None:
-        pass  # TODO: Implement this
-
-    def assert_correctness(self, local_variables: VariableWatch, global_variables=None) -> None:
-        for evaluation in self.children:
-            evaluation.assert_correctness(local_variables)
+    def evaluate(self, stack: Stack, local_variables: VariableWatch = None, global_variables=None) -> EvaluationReport | None:
+        for child in self.children:
+            report: EvaluationReport | None = child.evaluate(stack, local_variables)
+            if report is not None:
+                if report.signal_break and (report.jump_to == 0 or report.jump_to == self.name):
+                    break
+                elif report.signal_break and isinstance(report.jump_to, int):
+                    report.jump_to -= 1
+                    return report
+                if report.signal_return:
+                    return report
 
 
 class LoopExpression(Evaluation):
 
-    def evaluate(self, stack: Stack, local_variables: VariableWatch = None, global_variables=None) -> None:
-        pass  # TODO: Implement this
+    def __init__(self, **kwargs):
+        super().__init__()
 
-    def assert_correctness(self, local_variables: VariableWatch, global_variables=None) -> None:
-        for evaluation in self.children:
-            evaluation.assert_correctness(local_variables)
+    def evaluate(self, stack: Stack, local_variables: VariableWatch = None, global_variables=None) -> None:
+        for child in self.children:
+            child.evaluate(stack, local_variables)
 
 
 class IfExpression(Evaluation):
@@ -76,13 +81,6 @@ class IfExpression(Evaluation):
         elif self.else_clause is not None:
             self.else_clause.evaluate(stack, local_variables)
 
-    def assert_correctness(self, local_variables: VariableWatch, global_variables=None) -> None:
-        if self.condition is not None:
-            self.condition.assert_correctness(local_variables)
-        self.then_clause.assert_correctness(local_variables)
-        if self.else_clause is not None:
-            self.else_clause.assert_correctness(local_variables)
-
 
 class ThenExpression(Evaluation):
 
@@ -90,21 +88,12 @@ class ThenExpression(Evaluation):
         for evaluation in self.children:
             evaluation.evaluate(stack, local_variables)
 
-    def assert_correctness(self, local_variables: VariableWatch, global_variables=None) -> None:
-        for evaluation in self.children:
-            evaluation.assert_correctness(local_variables)
-
 
 class ElseExpression(Evaluation):
 
     def evaluate(self, stack: Stack, local_variables: VariableWatch = None, global_variables=None) -> None:
         for evaluation in self.children:
             evaluation.evaluate(stack, local_variables)
-
-    def assert_correctness(self, local_variables: VariableWatch, global_variables=None) -> None:
-        for evaluation in self.children:
-            evaluation.assert_correctness(local_variables)
-
 
 class SelectExpression(Evaluation):
 
@@ -127,6 +116,10 @@ class SelectExpression(Evaluation):
         else:
             self.second_clause.evaluate(stack, local_variables)
 
-    def assert_correctness(self, local_variables: VariableWatch, global_variables=None) -> None:
-        for evaluation in [self.condition, self.first_clause, self.second_clause]:
-            evaluation.assert_correctness(local_variables)
+
+class BranchExpression(Evaluation):
+
+    def evaluate(self, stack: Stack, local_variables: VariableWatch = None, global_variables=None) -> EvaluationReport:
+        for child in self.children[1:]:
+            child.evaluate(stack, local_variables, global_variables)
+        return EvaluationReport(signal_break=True, jump_to=self.children[0].expression_name)

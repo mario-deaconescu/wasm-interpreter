@@ -3,35 +3,11 @@ from __future__ import annotations
 import decimal
 from math import floor, ceil
 
-from custom_exceptions import InvalidSyntaxError, DivisionByZeroError, IntegerOverflowError, UnexpectedTokenError, \
-    InvalidNumberTypeError, EmptyOperandError
+from custom_exceptions import DivisionByZeroError, IntegerOverflowError, UnexpectedTokenError
 from enums import NumberType
 
-from evaluations import BinaryEvaluation, UnaryEvaluation, Evaluation
-from expressions import SExpression
+from evaluations import BinaryEvaluation, UnaryEvaluation
 from variables import VariableWatch, FixedNumber, Stack
-
-
-class NumberTypeExpression(SExpression):
-    number_types: list[NumberType]
-
-    def __init__(self, **kwargs) -> None:
-        super().__init__()
-        if len(self.children) != 1:
-            raise InvalidSyntaxError(f"Number expression has incorrect number of parameters ({len(self.children)})")
-        self.number_types = [NumberType(type_string) for type_string in self.children[0].expression_name.split(" ")]
-        self.children = []
-
-
-class ResultExpression(NumberTypeExpression):
-    pass
-
-
-class ParamExpression(NumberTypeExpression):
-
-    def __init__(self, **kwargs):
-        super().__init__()
-        Stack().expand(len(self.number_types))
 
 
 class ConstExpression(UnaryEvaluation):

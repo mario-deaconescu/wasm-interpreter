@@ -2,12 +2,30 @@ from __future__ import annotations
 
 from enum import Enum
 
-from custom_exceptions import InvalidFunctionSignatureError, UnknownFunctionError, EmptyOperandError
+from custom_exceptions import InvalidFunctionSignatureError, UnknownFunctionError, EmptyOperandError, \
+    UndefinedElementError
 from enums import NumberType
 from evaluations import Evaluation, UnaryEvaluation, EvaluationReport
 from expressions import ExportExpression, SExpression
-from operations import ParamExpression, ResultExpression
+from number_types import ResultExpression, ParamExpression
+from singleton import singleton
 from variables import VariableWatch, FixedNumber, NumberVariable, Stack, GlobalVariableWatch
+
+
+@singleton
+class FunctionRegistry:
+    functions: list[FunctionExpression] = []
+
+    def clear(self) -> None:
+        self.functions = []
+
+    def register_function(self, function: FunctionExpression) -> None:
+        self.functions.append(function)
+
+    def get_function(self, index: int) -> FunctionExpression:
+        if index >= len(self.functions):
+            raise UndefinedElementError(f'Undefined element at index {index}')
+        return self.functions[index]
 
 
 class FunctionExpression(Evaluation):
@@ -40,7 +58,8 @@ class FunctionExpression(Evaluation):
         child_index: int = 0
         while child_index < len(self.children) and isinstance(self.children[child_index], ParamExpression):
             parameter_expression: ParamExpression = self.children[child_index]
-            self.parameters += [NumberVariable(number_type, parameter_expression.name) for number_type in parameter_expression.number_types]
+            self.parameters += [NumberVariable(number_type, parameter_expression.name) for number_type in
+                                parameter_expression.number_types]
             child_index += 1
         # Remove parameters from children
         self.children = self.children[child_index:]
@@ -57,17 +76,18 @@ class FunctionExpression(Evaluation):
     def initialize_parameters(self, local_variables: VariableWatch, global_variables: GlobalVariableWatch,
                               *args: NumberVariable | FixedNumber) \
             -> VariableWatch:
+        new_local_variables = VariableWatch()
         # Check parameters
         if len(args) != len(self.parameters):
             raise InvalidFunctionSignatureError(self, *args)
         for index, arg in enumerate(args):
             if self.parameters[index].number_type != arg.number_type:
                 raise TypeError("Invalid parameter type")
-            local_variables.add_variable(arg, self.parameters[index].name)
+            new_local_variables.add_variable(arg, self.parameters[index].name)
         for expression in self.children:
             if not isinstance(expression, Evaluation):
                 raise TypeError("Expression can not be evaluated")
-        return local_variables
+        return new_local_variables
 
     def assert_correctness(self, local_variables: VariableWatch, global_variables=None) -> NumberType:
         # Check parameters
@@ -75,7 +95,8 @@ class FunctionExpression(Evaluation):
         for evaluation in self.children:
             evaluation.assert_correctness(local_variables)
 
-    def evaluate(self, stack: Stack, local_variables: VariableWatch = None, global_variables=None, *args: FixedNumber) -> None:
+    def evaluate(self, stack: Stack, local_variables: VariableWatch = None, global_variables=None,
+                 *args: FixedNumber) -> None:
         super().evaluate(stack, local_variables, global_variables)
         # Check parameters
         local_variables = self.initialize_parameters(local_variables, global_variables, *args)
@@ -116,17 +137,14 @@ class CallExpression(Evaluation):
         self.expression_name, self.function_identifier = self.expression_name.split(' ')
         self.function: FunctionExpression = variables[self.function_identifier]
 
-
     def evaluate(self, stack: Stack, local_variables: VariableWatch = None, global_variables=None) -> None:
         super().evaluate(stack, local_variables)
-
-
 
         parameters: list[FixedNumber] = []
         for evaluation in self.children:
             evaluation.evaluate(stack, local_variables)
             parameters.append(stack.pop())
-        self.function.evaluate(stack, local_variables)
+        self.function.evaluate(stack, local_variables, global_variables, *parameters)
 
     def assert_correctness(self, local_variables: VariableWatch, global_variables=None) -> NumberType:
         for child in self.children:
@@ -138,32 +156,38 @@ class CallExpression(Evaluation):
 
 class CallIndirectExpression(CallExpression):
     function_type: ExpressionType = None
-    function_identifier: Evaluation = None
+    call_index: Evaluation = None
+    table: list[FunctionExpression] = None
 
     def __init__(self, **kwargs) -> None:
         if not isinstance(self.children[0], TypeExpression):
             EmptyOperandError.try_raise(2, Stack())
         self.type_expression: TypeExpression = self.children[0]
+        if not isinstance(self.children[-1], Evaluation):
+            EmptyOperandError.try_raise(1, Stack())
+        self.call_index = self.children[-1]
+        self.children = self.children[:-1]
         self.children = self.children[1:]
-        if not isinstance(self.children[0], Evaluation):
-            EmptyOperandError.try_raise(2, Stack())
-        self.function_identifier = self.children[0]
-        self.children = self.children[1:]
+        self.table = FunctionRegistry().functions.copy()
 
     def evaluate(self, stack: Stack, local_variables: VariableWatch = None, global_variables=None) -> None:
-        pass  # TODO
-
-    def assert_correctness(self, local_variables: VariableWatch, global_variables=None) -> NumberType:
-        self.function_identifier.assert_correctness(local_variables)
-        for child in self.children:
-            child.assert_correctness(local_variables)
-
+        self.call_index.evaluate(stack, local_variables)
+        index: int = stack.pop().value
+        if index >= len(self.table):
+            raise UndefinedElementError(f'Index {index} is out of bounds')
+        function: FunctionExpression = self.table[index]
+        parameters: list[FixedNumber] = []
+        for evaluation in self.children:
+            evaluation.evaluate(stack, local_variables)
+            parameters.append(stack.pop())
+        function.evaluate(stack, local_variables, global_variables, *parameters)
 
 class ReturnExpression(UnaryEvaluation):
 
     def evaluate(self, stack: Stack, local_variables: VariableWatch = None, global_variables=None) -> EvaluationReport:
-        evaluation: FixedNumber = self.check_and_evaluate(stack, local_variables)
-        stack.push(evaluation)
+        if len(self.children) == 1:
+            evaluation: FixedNumber = self.check_and_evaluate(stack, local_variables)
+            stack.push(evaluation)
         return EvaluationReport(signal_return=True)
 
     def __init__(self, **kwargs) -> None:
@@ -172,13 +196,32 @@ class ReturnExpression(UnaryEvaluation):
 
 class TableFunctionExpression(Evaluation):
 
+    def __init__(self, **kwargs) -> None:
+        super().__init__()
+        if len(self.children) != 1:
+            EmptyOperandError.try_raise(1, Stack())
+        if not isinstance(self.children[0], ElementExpression):
+            raise TypeError("Function name must be an element expression")
+        self.evaluate(Stack(), None)
+
     def evaluate(self, stack: Stack, local_variables: VariableWatch = None, global_variables=None) -> None:
         super().evaluate(stack, local_variables)
+        if len(self.children) != 1:
+            EmptyOperandError.try_raise(1, Stack())
+        FunctionRegistry().register_function(self.children[0].element)
 
     def assert_correctness(self, local_variables: VariableWatch, global_variables=None) -> None:
         if len(self.children) != 1:
             EmptyOperandError.try_raise(1, Stack())
 
+
+class ElementExpression(Evaluation):
+
+    element: Evaluation = None
+
+    def __init__(self, variables=None) -> None:
+        super().__init__(variables=variables)
+        self.element = variables[self.name]
 
 class ExpressionType(Enum):
     FUNCTION = 0
