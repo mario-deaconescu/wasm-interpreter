@@ -576,3 +576,19 @@ class Extend32Expression(UnaryEvaluation):
                 return value | 0xffffffff00000000
 
         stack.push(FixedNumber(extend(first_evaluation.value), self.number_type))
+
+
+class Extendi32uExpression(UnaryEvaluation):
+    def evaluate(self, stack: Stack, local_variables: VariableWatch = None, global_variables=None) -> None:
+        super().evaluate(stack, local_variables)
+        first_evaluation = self.check_and_evaluate(stack, local_variables)
+
+        def extend(value):
+            if value == 0:
+                return 0x0000000000000000
+            if (value & (1<<31)) >> 31 == 1:
+                return 0xffffffff00000000 | value
+            else:
+                return 0x0000000000000000 | value
+
+        stack.push(FixedNumber(extend(first_evaluation.value), self.number_type))

@@ -56,6 +56,7 @@ CLASSES_DICT: dict[str, str] = {
     'extend8_s': 'Extend8Expression',
     'extend16_s': 'Extend16Expression',
     'extend32_s': 'Extend32Expression',
+    'extend_i32_u': 'Extendi32uExpression',
     'div_s': 'DivSignedExpression',
     'div_u': 'DivUnsignedExpression',
     'rem_s': 'RemsExpression',

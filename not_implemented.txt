@@ -1,0 +1,4 @@
+i32.extend8_si32.extend16_si32.extend16_si32.extend16_s
+i32.extend8_si32.extend8_si32.extend8_si32.extend16_si32.extend16_s
+i32.extend16_si32.extend8_si32.extend8_si64.extend32_si64.extend32_s
+i32.extend16_si32.extend16_si32.extend16_s
