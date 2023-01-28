@@ -569,4 +569,35 @@ class Extendi32uExpression(UnaryEvaluation):
 
         stack.push(FixedNumber(extend(first_evaluation.value), self.number_type))
 
+class F32GTExpression(BinaryEvaluation):
+    def evaluate(self, stack: Stack, local_variables: VariableWatch = None, global_variables=None) -> None:
+        super().evaluate(stack, local_variables)
+        first_evaluation, second_evaluation = self.check_and_evaluate(stack, local_variables)
+        if (first_evaluation.value & 0x80000000) >> 31 == 0 and (first_evaluation.value & 0x80000000) >> 31 == 1:
+            stack.push(FixedNumber(1, self.number_type))
+        elif (first_evaluation.value & 0x80000000) >> 31 == 1 and (first_evaluation.value & 0x80000000) >> 31 == 0:
+            stack.push(FixedNumber(0, self.number_type))
+        else:
+            if (first_evaluation.value & 0x80000000) >> 31 == 0:
+                if (first_evaluation.value & 0x7f800000) >> 23 > (second_evaluation.value & 0x7f800000) >> 23:
+                    stack.push(FixedNumber(1, self.number_type))
+                if (first_evaluation.value & 0x7f800000) >> 23 == (second_evaluation.value & 0x7f800000) >> 23:
+                    if (first_evaluation.value & 0x007fffff) > (second_evaluation.value & 0x007fffff):
+                        stack.push(FixedNumber(1, self.number_type))
+                    else:
+                        stack.push(FixedNumber(0, self.number_type))
+                if (first_evaluation.value & 0x7f800000) >> 23 < (second_evaluation.value & 0x7f800000) >> 23:
+                    stack.push(FixedNumber(0, self.number_type))
+            else:
+                if (first_evaluation.value & 0x7f800000) >> 23 > (second_evaluation.value & 0x7f800000) >> 23:
+                    stack.push(FixedNumber(0, self.number_type))
+                if (first_evaluation.value & 0x7f800000) >> 23 == (second_evaluation.value & 0x7f800000) >> 23:
+                    if (first_evaluation.value & 0x007fffff) >= (second_evaluation.value & 0x007fffff):
+                        stack.push(FixedNumber(0, self.number_type))
+                    else:
+                        stack.push(FixedNumber(1, self.number_type))
+                if (first_evaluation.value & 0x7f800000) >> 23 < (second_evaluation.value & 0x7f800000) >> 23:
+                    stack.push(FixedNumber(1, self.number_type))
+
+
 

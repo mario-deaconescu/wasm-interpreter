@@ -52,6 +52,7 @@ CLASSES_DICT: dict[str, str] = {
     'gt_u': 'GtuExpression',
     'ge_s': 'GesExpression',
     'ge_u': 'GeuExpression',
+    'f32.gt': 'F32GTExpression',
     'ctz': 'CtzExpression',
     'extend_i32_u': 'Extendi32uExpression',
     'extend8_s': 'Extend8Expression',
