@@ -592,3 +592,5 @@ class Extendi32uExpression(UnaryEvaluation):
                 return 0x0000000000000000 | value
 
         stack.push(FixedNumber(extend(first_evaluation.value), self.number_type))
+
+
