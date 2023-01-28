@@ -37,7 +37,7 @@ class IfExpression(Evaluation):
     else_clause: Evaluation = None
     condition: Evaluation = None
 
-    def __init__(self):
+    def __init__(self, **kwargs):
         super().__init__()
         Stack().contract(1)
         if len(self.children) == 0:
@@ -71,7 +71,7 @@ class IfExpression(Evaluation):
         if self.condition is not None:
             self.condition.evaluate(stack, local_variables)
         truth = stack.pop().value
-        if truth == 1:
+        if truth != 0:
             self.then_clause.evaluate(stack, local_variables)
         elif self.else_clause is not None:
             self.else_clause.evaluate(stack, local_variables)
@@ -112,7 +112,7 @@ class SelectExpression(Evaluation):
     first_clause: Evaluation = None
     second_clause: Evaluation = None
 
-    def __init__(self):
+    def __init__(self, **kwargs):
         super().__init__()
         if len(self.children) < 3:
             EmptyOperandError.try_raise(3, Stack())

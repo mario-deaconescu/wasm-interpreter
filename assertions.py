@@ -22,6 +22,10 @@ class AssertExpression(SExpression):
     def assert_return(self) -> SExpression:
         return self.children[1] if len(self.children) > 1 else None
 
+    @property
+    def assert_results(self) -> list[SExpression]:
+        return self.children[1:] if len(self.children) > 1 else None
+
     @abstractmethod
     def assert_expression(self) -> bool:
         pass
@@ -81,15 +85,18 @@ class AssertReturnExpression(AssertExpression):
         if self.assert_return is None:
             return len(stack) == 0
 
-        result: FixedNumber = stack.pop()
+        for result_expression in reversed(self.assert_results):
+            if not isinstance(result_expression, Evaluation):
+                raise TypeError(
+                    f"Invalid assert result: Expected Evaluation, got {self.assert_return.__class__.__name__}")
 
-        if not isinstance(self.assert_return, Evaluation):
-            raise TypeError(f"Invalid assert result: Expected Evaluation, got {self.assert_return.__class__.__name__}")
-        expected_evaluation: Evaluation = self.assert_return
-        expected_evaluation.evaluate(stack, VariableWatch())
-        expected_result: FixedNumber = stack.pop()
+            result: FixedNumber = stack.pop()
 
-        return abs(result) == abs(expected_result)
+            result_expression.evaluate(stack, VariableWatch())
+            expected_result: FixedNumber = stack.pop()
+            if abs(result)  != abs(expected_result):
+                return False
+        return True
 
 
 class AssertTrapExpression(AssertExpression):

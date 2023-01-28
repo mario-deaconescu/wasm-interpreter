@@ -71,7 +71,7 @@ class SExpression:
         for child in self.children:
             child.assert_correctness(local_variables)
 
-    def __init__(self) -> None:
+    def __init__(self, variables=None) -> None:
         pass
 
     def __str__(self) -> str:
@@ -89,7 +89,7 @@ class ModuleExpression(SExpression):
 class ExportExpression(SExpression):
     export_name: str
 
-    def __init__(self, _=None) -> None:
+    def __init__(self, **kwargs) -> None:
         super().__init__()
         if len(self.children) != 1:
             raise InvalidSyntaxError(f"Export expression has incorrect number of parameters ({len(self.children)})")

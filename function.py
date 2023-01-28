@@ -28,7 +28,7 @@ class FunctionExpression(Evaluation):
         representation += f' (exported as "{self.export_as}")'
         return representation
 
-    def __init__(self, _=None) -> None:
+    def __init__(self, **kwargs) -> None:
         super().__init__()
         self.parameters = []
         if len(self.children) > 0:
@@ -86,7 +86,7 @@ class FunctionExpression(Evaluation):
 class InvokeExpression(Evaluation):
     function: FunctionExpression = None
 
-    def __init__(self, _=None) -> None:
+    def __init__(self, **kwargs) -> None:
         super().__init__()
         self.expression_name, function_name = self.expression_name.split(' ')
         function_name = function_name.strip('"')
@@ -109,21 +109,24 @@ class InvokeExpression(Evaluation):
 
 class CallExpression(Evaluation):
     function_identifier: int | str = None
+    function: FunctionExpression = None
 
-    def __init__(self) -> None:
+    def __init__(self, variables=None) -> None:
         super().__init__()
         self.expression_name, self.function_identifier = self.expression_name.split(' ')
+        self.function: FunctionExpression = variables[self.function_identifier]
+
 
     def evaluate(self, stack: Stack, local_variables: VariableWatch = None, global_variables=None) -> None:
         super().evaluate(stack, local_variables)
 
-        function: FunctionExpression = local_variables[self.function_identifier]
+
 
         parameters: list[FixedNumber] = []
         for evaluation in self.children:
             evaluation.evaluate(stack, local_variables)
             parameters.append(stack.pop())
-        function.evaluate(stack, local_variables)
+        self.function.evaluate(stack, local_variables)
 
     def assert_correctness(self, local_variables: VariableWatch, global_variables=None) -> NumberType:
         for child in self.children:
@@ -137,7 +140,7 @@ class CallIndirectExpression(CallExpression):
     function_type: ExpressionType = None
     function_identifier: Evaluation = None
 
-    def __init__(self) -> None:
+    def __init__(self, **kwargs) -> None:
         if not isinstance(self.children[0], TypeExpression):
             EmptyOperandError.try_raise(2, Stack())
         self.type_expression: TypeExpression = self.children[0]
@@ -163,7 +166,7 @@ class ReturnExpression(UnaryEvaluation):
         stack.push(evaluation)
         return EvaluationReport(signal_return=True)
 
-    def __init__(self) -> None:
+    def __init__(self, **kwargs) -> None:
         pass
 
 
@@ -185,7 +188,7 @@ class TypeExpression(UnaryEvaluation):
     type_name: str | int = None
     expression_type: ExpressionType = None
 
-    def __init__(self) -> None:
+    def __init__(self, **kwargs) -> None:
         super().__init__(numeric=False, skip_operand_check=True)
         Stack().contract(1)
         self.expression_name, self.type_name = self.expression_name.split(' ')

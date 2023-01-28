@@ -15,7 +15,7 @@ from variables import VariableWatch, FixedNumber, Stack
 class NumberTypeExpression(SExpression):
     number_types: list[NumberType]
 
-    def __init__(self) -> None:
+    def __init__(self, **kwargs) -> None:
         super().__init__()
         if len(self.children) != 1:
             raise InvalidSyntaxError(f"Number expression has incorrect number of parameters ({len(self.children)})")
@@ -29,7 +29,7 @@ class ResultExpression(NumberTypeExpression):
 
 class ParamExpression(NumberTypeExpression):
 
-    def __init__(self):
+    def __init__(self, **kwargs):
         super().__init__()
         Stack().expand(len(self.number_types))
 
@@ -37,7 +37,7 @@ class ParamExpression(NumberTypeExpression):
 class ConstExpression(UnaryEvaluation):
     value: FixedNumber
 
-    def __init__(self, _=None) -> None:
+    def __init__(self, **kwargs) -> None:
         super().__init__(no_input=True)
         value: int | float
         try:

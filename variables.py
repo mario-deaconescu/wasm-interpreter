@@ -34,7 +34,7 @@ class VariableWatch:
         self._variables[self._variable_counter] = value
         self._variable_counter += 1
         if name is not None:
-            if not name.startswith('$'):
+            if isinstance(name, str) and not name.startswith('$'):
                 name = '$' + name
             self._variables[name] = value
 

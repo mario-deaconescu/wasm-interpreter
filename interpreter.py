@@ -4,7 +4,7 @@ from argparse import ArgumentParser, Namespace
 from os.path import exists
 from typing import Generator, TYPE_CHECKING
 import re
-from instantiate import create_expression
+from instantiate import ExpressionInstantiater
 
 from expressions import SExpression
 from assertions import AssertExpression
@@ -23,16 +23,17 @@ def read_expressions(input_file_name: str) -> Generator[SExpression, None, None]
         # Remove comments
         expression_string: str = re.sub(r';.*', '', input_file.read()).replace('\n', '')
         expression_string = re.sub(" +", " ", expression_string)
+    instantiater = ExpressionInstantiater()
     for index, string in enumerate(SExpression.get_parentheses(expression_string)):
         if DEBUG:
             # print(f"Parsed expression #{index}: {string}")
             try:
-                yield create_expression(string)
+                yield instantiater.create_expression(string)
             except NotImplementedError as error:
                 # print(error)
                 pass
         else:
-            yield create_expression(string)
+            yield instantiater.create_expression(string)
 
 
 def check_asserts(input_file_name: str) -> None:

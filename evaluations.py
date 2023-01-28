@@ -44,11 +44,12 @@ class UnaryEvaluation(Evaluation):
 
     def __init__(self, numeric=True, **kwargs) -> None:
         super().__init__()
-        if len(self.children) < 1 and not kwargs.get('skip_operand_check', False): # Special check for TypeExpression
+        if len(self.children) < 1 and not kwargs.get('skip_operand_check', False):  # Special check for TypeExpression
             EmptyOperandError.try_raise(1, Stack())
         if numeric:
             self.number_type = NumberType(self.expression_name[:3])
-            if isinstance(self.operand, Evaluation) and self.operand.number_type is not None and self.operand.number_type != self.number_type:
+            if isinstance(self.operand,
+                          Evaluation) and self.operand.number_type is not None and self.operand.number_type != self.number_type:
                 raise InvalidNumberTypeError(FixedNumber(None, self.operand.number_type), self.number_type)
         Stack().expand(1)
 
@@ -82,18 +83,21 @@ class BinaryEvaluation(Evaluation):
             return Stack().pop()
         return self.children[1]
 
-    def __init__(self, _=None) -> None:
+    def __init__(self, **kwargs) -> None:
         super().__init__()
         if len(self.children) < 2:
             EmptyOperandError.try_raise(2, Stack())
         self.number_type = NumberType(self.expression_name[:3])
-        if isinstance(self.first_operand, Evaluation) and self.first_operand.number_type is not None and self.first_operand.number_type != self.number_type:
+        if isinstance(self.first_operand,
+                      Evaluation) and self.first_operand.number_type is not None and self.first_operand.number_type != self.number_type:
             raise InvalidNumberTypeError(FixedNumber(None, self.first_operand.number_type), self.number_type)
-        if isinstance(self.second_operand, Evaluation) and self.second_operand.number_type is not None and self.second_operand.number_type != self.number_type:
+        if isinstance(self.second_operand,
+                      Evaluation) and self.second_operand.number_type is not None and self.second_operand.number_type != self.number_type:
             raise InvalidNumberTypeError(FixedNumber(None, self.second_operand.number_type), self.number_type)
         Stack().expand(1)
 
-    def check_and_evaluate(self, stack: Stack, local_variables: VariableWatch = None, global_variables: VariableWatch = None) -> tuple[
+    def check_and_evaluate(self, stack: Stack, local_variables: VariableWatch = None,
+                           global_variables: VariableWatch = None) -> tuple[
         FixedNumber, FixedNumber]:
         self.first_operand.evaluate(stack, local_variables)
         first_evaluation: FixedNumber = stack.pop()
@@ -112,7 +116,7 @@ class BinaryEvaluation(Evaluation):
 
 class LocalGetter(Evaluation):
 
-    def __init__(self):
+    def __init__(self, **kwargs):
         super().__init__()
         Stack().expand(1)
         if self.name is None:
@@ -131,19 +135,21 @@ class LocalGetter(Evaluation):
 
 class LocalSetter(UnaryEvaluation):
 
-    def __init__(self):
+    def __init__(self, **kwargs):
         super().__init__(numeric=False)
+
     def evaluate(self, stack: Stack, local_variables: VariableWatch = None, global_variables=None) -> None:
         if self.name not in local_variables:
             raise UnknownVariableError(self.name)
         self.operand.evaluate(stack, local_variables)
         local_variables[self.name] = stack.pop()
 
+
 class LocalExpression(Evaluation):
     number_type: NumberType = None
     variable_name: str = None
 
-    def __init__(self):
+    def __init__(self, **kwargs):
         super().__init__()
         if '$' in self.expression_name:
             self.expression_name, self.variable_name, number_string = self.expression_name.split(" ")
@@ -174,7 +180,7 @@ class GlobalGetter(Evaluation):
 
 class GlobalSetter(UnaryEvaluation):
 
-    def __init__(self):
+    def __init__(self, **kwargs):
         super().__init__(numeric=False)
 
     def evaluate(self, stack: Stack, local_variables: VariableWatch = None, global_variables=None) -> None:
@@ -190,7 +196,7 @@ class GlobalSetter(UnaryEvaluation):
 class LoadExpression(UnaryEvaluation):
     number_type: NumberType = None
 
-    def __init__(self):
+    def __init__(self, **kwargs):
         super().__init__()
 
     def evaluate(self, stack: Stack, local_variables: VariableWatch = None, global_variables=None) -> None:
@@ -202,7 +208,7 @@ class LoadExpression(UnaryEvaluation):
 class MemoryGrowExpression(UnaryEvaluation):
     number_type: NumberType = None
 
-    def __init__(self):
+    def __init__(self, **kwargs):
         super().__init__(numeric=False)
 
     def evaluate(self, stack: Stack, local_variables: VariableWatch = None, global_variables=None) -> None:
@@ -217,7 +223,7 @@ class MemoryGrowExpression(UnaryEvaluation):
 class StoreExpression(BinaryEvaluation):
     number_type: NumberType = None
 
-    def __init__(self):
+    def __init__(self, **kwargs):
         super().__init__()
 
     def evaluate(self, stack: Stack, local_variables: VariableWatch = None, global_variables=None) -> None:
@@ -229,4 +235,3 @@ class StoreExpression(BinaryEvaluation):
 class NOPExpression(Evaluation):
     def evaluate(self, stack: Stack, local_variables: VariableWatch = None, global_variables=None) -> None:
         pass
-
