@@ -116,13 +116,13 @@ class SelectExpression(Evaluation):
         super().__init__()
         if len(self.children) < 3:
             EmptyOperandError.try_raise(3, Stack())
-        self.condition, self.first_clause, self.second_clause = self.children
+        self.first_clause, self.second_clause, self.condition = self.children
         self.children = []
 
     def evaluate(self, stack: Stack, local_variables: VariableWatch = None, global_variables=None) -> None:
         self.condition.evaluate(stack, local_variables)
         truth = stack.pop().value
-        if truth == 1:
+        if truth != 0:
             self.first_clause.evaluate(stack, local_variables)
         else:
             self.second_clause.evaluate(stack, local_variables)
