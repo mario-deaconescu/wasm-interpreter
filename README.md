@@ -17,9 +17,15 @@
       avand drept fii denumirile functiilor care sunt de interpretat, toate aceastea avand drept fii parametrii, erorile si body-ul...etc. Un exemplu simplificat de un 
       astfel de graf este:
 
-![graph (3)](https://user-images.githubusercontent.com/115883033/215325914-852ace40-622c-48a2-ac11-9b0de49ec2b7.png)
+![graph (3)
+](https://user-images.githubusercontent.com/115883033/215325914-852ace40-622c-48a2-ac11-9b0de49ec2b7.png)
 
-      - Functia ```check_asserts``` verifica asserturile, acestea fiind de 4 tipuri:
+M=Module
+F=Functie
+I=Instructiune
+P= Parametru
+
+     - Functia ```check_asserts``` verifica asserturile, acestea fiind de 4 tipuri:
 
           - Invalid, daca este eroare de sintaxa
           - Return, ce returneaza functia
