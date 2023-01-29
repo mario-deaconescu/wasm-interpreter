@@ -33,4 +33,4 @@ class ParamExpression(NumberTypeExpression):
 
     def __init__(self, **kwargs):
         super().__init__()
-        Stack().expand(len(self.number_types))
+        # Stack().expand(len(self.number_types))

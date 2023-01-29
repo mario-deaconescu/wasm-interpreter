@@ -49,6 +49,7 @@ class UnaryEvaluation(Evaluation):
     def operand(self) -> Evaluation:
         if len(self.children) == 0:
             EmptyOperandError.try_raise(1, Stack())
+            return Stack().pop()
         return self.children[0]
 
     def __init__(self, numeric=True, **kwargs) -> None:
@@ -60,13 +61,15 @@ class UnaryEvaluation(Evaluation):
             if isinstance(self.operand,
                           Evaluation) and self.operand.number_type is not None and self.operand.number_type != self.number_type:
                 raise InvalidNumberTypeError(FixedNumber(None, self.operand.number_type), self.number_type)
+        if len(self.children) == 1 and not kwargs.get('no_input', False):
+            Stack().contract(1)
         Stack().expand(1)
 
     def check_and_evaluate(self, stack: Stack, local_variables: VariableWatch) -> FixedNumber:
         self.operand.evaluate(stack, local_variables)
         evaluation: FixedNumber = stack.pop()
-        if self.number_type is not None and not evaluation.number_type == self.number_type:
-            raise InvalidNumberTypeError(evaluation, self.number_type)
+        # if self.number_type is not None and not evaluation.number_type == self.number_type:
+        #     raise InvalidNumberTypeError(evaluation, self.number_type)
         return evaluation
 
 
@@ -97,11 +100,18 @@ class BinaryEvaluation(Evaluation):
         if isinstance(self.second_operand,
                       Evaluation) and self.second_operand.number_type is not None and self.second_operand.number_type != self.number_type:
             raise InvalidNumberTypeError(FixedNumber(None, self.second_operand.number_type), self.number_type)
+        if len(self.children) == 2:
+            Stack().contract(2)
         Stack().expand(1)
 
     def check_and_evaluate(self, stack: Stack, local_variables: VariableWatch = None,
                            global_variables: VariableWatch = None) -> tuple[
         FixedNumber, FixedNumber]:
+        if len(self.children) == 1:
+            self.children[0].evaluate(stack, local_variables)
+            second_evaluation: FixedNumber = stack.pop()
+            first_evaluation: FixedNumber = stack.pop()
+            return first_evaluation, second_evaluation
         first_operand = self.first_operand
         if isinstance(first_operand, Evaluation):
             first_operand.evaluate(stack, local_variables)
@@ -114,6 +124,8 @@ class BinaryEvaluation(Evaluation):
             second_evaluation: FixedNumber = stack.pop()
         elif isinstance(second_operand, FixedNumber):
             second_evaluation: FixedNumber = second_operand
+        if len(self.children) == 0:
+            first_evaluation, second_evaluation = second_evaluation, first_evaluation
         if not first_evaluation.number_type == self.number_type:
             raise InvalidNumberTypeError(first_evaluation, self.number_type)
         if not second_evaluation.number_type == self.number_type:
@@ -126,9 +138,11 @@ class BinaryEvaluation(Evaluation):
 
 
 class LocalGetter(Evaluation):
+    number_of_parameters: int = 1
 
     def __init__(self, **kwargs):
         super().__init__()
+        self.number_of_parameters = 1
         Stack().expand(1)
         if self.name is None:
             if len(self.children) == 0:
@@ -156,10 +170,9 @@ class LocalSetter(Evaluation):
             except ValueError:
                 raise UnexpectedTokenError(self.children[0].expression_name)
             self.children = self.children[1:]
+        Stack().contract(1)
 
     def evaluate(self, stack: Stack, local_variables: VariableWatch = None, global_variables=None) -> None:
-        if self.name not in local_variables:
-            raise UnknownVariableError(self.name)
         self.children[0].evaluate(stack, local_variables)
         local_variables[self.name] = stack.pop()
 
@@ -175,6 +188,7 @@ class LocalExpression(Evaluation):
         else:
             self.expression_name, number_string = self.expression_name.split(" ")
         self.number_type = NumberType(number_string)
+        Stack().contract(1)
 
     def evaluate(self, stack: Stack, local_variables: VariableWatch = None, global_variables=None) -> None:
         if local_variables is None:
@@ -183,6 +197,10 @@ class LocalExpression(Evaluation):
 
 
 class LocalTee(LocalSetter):
+
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+        Stack().expand(1)
 
     def evaluate(self, stack: Stack, local_variables: VariableWatch = None, global_variables=None) -> None:
         super().evaluate(stack, local_variables)
@@ -196,17 +214,20 @@ class GlobalGetter(Evaluation):
             global_variables = GlobalVariableWatch()
         if self.name not in global_variables:
             raise UnknownVariableError(self.name)
-        stack.push(global_variables[self.name])
+        stack.push(global_variables[self.name].value)
 
 
 class GlobalSetter(UnaryEvaluation):
 
     def __init__(self, **kwargs):
         super().__init__(numeric=False)
+        # Stack().contract(1)
 
     def evaluate(self, stack: Stack, local_variables: VariableWatch = None, global_variables=None) -> None:
         if global_variables is None:
             global_variables = GlobalVariableWatch()
+        if self.name not in global_variables:
+            raise UnknownVariableError(self.name)
         if len(self.children) == 1:
             self.operand.evaluate(stack, local_variables)
             global_variables[self.name] = stack.pop()
@@ -222,7 +243,7 @@ class LoadExpression(UnaryEvaluation):
 
     def evaluate(self, stack: Stack, local_variables: VariableWatch = None, global_variables=None) -> None:
         if global_variables is None:
-            global_variables = VariableWatch()
+            global_variables = GlobalVariableWatch()
         self.operand.evaluate(stack, local_variables, global_variables)
         stack.push(Memory()[stack.pop().value, self.number_type])
 
@@ -249,6 +270,7 @@ class StoreExpression(BinaryEvaluation):
 
     def __init__(self, **kwargs):
         super().__init__()
+        Stack().contract(1)
 
     def evaluate(self, stack: Stack, local_variables: VariableWatch = None, global_variables=None) -> None:
         super().evaluate(stack, local_variables, global_variables)
@@ -264,3 +286,32 @@ class NOPExpression(Evaluation):
 class UnreachableExpression(Evaluation):
     def evaluate(self, stack: Stack, local_variables: VariableWatch = None, global_variables=None) -> None:
         raise UnreachableError()
+
+
+class GlobalExpression(Evaluation):
+    mutable: bool = True
+    number_type: NumberType = None
+    variable_name: str = None
+    number: Evaluation = None
+
+    def __init__(self, variables=None):
+        super().__init__()
+        if '$' not in self.expression_name and self.name is None:
+            raise InvalidNumberTypeError()
+        if self.name is None:
+            self.expression_name, self.variable_name = self.expression_name.split(" ")
+        if self.children[0].expression_name == 'mut':
+            self.mutable = True
+            self.number_type = NumberType(self.children[0].children[0].expression_name)
+            self.children = self.children[1:]
+        self.number = self.children[0]
+        self.evaluate(Stack(), variables, global_variables=GlobalVariableWatch())
+        Stack().contract(1)
+
+    def evaluate(self, stack: Stack, local_variables: VariableWatch = None, global_variables=None) -> None:
+        if local_variables is None:
+            local_variables = VariableWatch()
+        self.number.evaluate(stack, local_variables, global_variables)
+        index = stack.pop().value
+        global_variables.add_variable(FixedNumber(index, self.number_type), self.mutable, self.name)
+

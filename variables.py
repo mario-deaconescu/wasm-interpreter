@@ -31,8 +31,9 @@ class VariableWatch:
         return self._variables[item]
 
     def add_variable(self, value, name=None) -> None:
-        self._variables[self._variable_counter] = value
-        self._variable_counter += 1
+        if not (name is not None and isinstance(name, str) and name.startswith('~')):
+            self._variables[self._variable_counter] = value
+            self._variable_counter += 1
         if name is not None:
             if isinstance(name, str) and not name.startswith('$'):
                 name = '$' + name
@@ -42,6 +43,8 @@ class VariableWatch:
         if isinstance(key, int):
             self._variables[key] = value
         else:
+            if key.startswith('$'):
+                key = key[1:]
             self._variables['$' + key] = value
 
     def __contains__(self, item: str | int) -> bool:
@@ -52,42 +55,67 @@ class VariableWatch:
 
 @singleton
 class Stack:
-    _stack: list[Any] = []
+    _stacks: list[list[Any]] = [[]]
+    _stack_size: int = 1024
+
+    @property
+    def _current_stack(self) -> list[Any]:
+        return self._stacks[-1]
 
     def init(self, stack_size: int = 1024):
-        self._stack = []
+        self._stacks = [[]]
         self._stack_size = stack_size
 
     def pop(self) -> Any:
-        if len(self._stack) == 0:
+        if self.get_total_size() == 0:
             raise StackEmptyError()
-        return self._stack.pop()
+        if len(self._current_stack) == 0:
+            return self.get_previous_stack().pop()
+        return self._current_stack.pop()
 
     def push(self, value: Any) -> None:
-        if len(self._stack) == self._stack_size:
+        if self.get_total_size() == self._stack_size:
             raise StackOverflowError(self._stack_size)
-        self._stack.append(value)
+        self._current_stack.append(value)
 
     def __getitem__(self, item: int) -> Any:
-        return self._stack[-item - 1]
+        return self._current_stack[-item - 1]
 
     def __del__(self):
-        self._stack = []
+        self._stacks = [[]]
 
     def __len__(self):
-        return len(self._stack)
+        return len(self._current_stack)
 
     def expand(self, size: int):
-        self._stack += [None] * size
+        self._current_stack += [None] * size
 
     def contract(self, size: int):
-        self._stack = self._stack[:-size]
+        self._current_stack = self._current_stack[:-size]
 
     def size_to(self, size: int):
-        if len(self._stack) > size:
-            self.contract(len(self._stack) - size)
-        elif len(self._stack) < size:
-            self.expand(size - len(self._stack))
+        if len(self._current_stack) > size:
+            self.contract(len(self._current_stack) - size)
+        elif len(self._current_stack) < size:
+            self.expand(size - len(self._current_stack))
+
+    @_current_stack.setter
+    def _current_stack(self, value):
+        self._stacks[-1] = value
+
+    def push_stack(self):
+        self._stacks.append([])
+
+    def pop_stack(self):
+        old_stack = self._stacks.pop()
+        if len(self._stacks) != 0:
+            self._current_stack += old_stack
+
+    def get_previous_stack(self):
+        return self._stacks[-2]
+
+    def get_total_size(self) -> int:
+        return sum([len(stack) for stack in self._stacks])
 
 
 @dataclass
@@ -112,7 +140,6 @@ class FixedNumber:
         else:
             mask = 0x8000000000000000
         return (self._value & (mask - 1)) + (self._value & mask)
-
 
     @value.setter
     def value(self, new_value: int | float):
@@ -151,7 +178,8 @@ def assert_number_type(number: int | float, number_type: NumberType) -> int | fl
     # Type checking
     if (number_type == NumberType.i32 or number_type == NumberType.i64) and not isinstance(number, int):
         raise InvalidNumberTypeError(FixedNumber(number, None), number_type)
-    elif (number_type == NumberType.f32 or number_type == NumberType.f64) and not (isinstance(number, float) or isinstance(number, int)):
+    elif (number_type == NumberType.f32 or number_type == NumberType.f64) and not (
+            isinstance(number, float) or isinstance(number, int)):
         raise InvalidNumberTypeError(FixedNumber(number, None), number_type)
 
     # Overflow
@@ -164,11 +192,46 @@ def assert_number_type(number: int | float, number_type: NumberType) -> int | fl
     return number
 
 
+@dataclass()
+class GlobalVariable:
+    mutable: bool
+    value: FixedNumber
+
+
 @singleton
-class GlobalVariableWatch(VariableWatch):
+class GlobalVariableWatch:
+    _variable_counter: int = 0
+    _variables: dict[int | str, GlobalVariable] = {}
 
     def __init__(self):
-        pass
+        self._variable_counter = 0
+        self._variables = {}
+
+    def __getitem__(self, item):
+        if isinstance(item, str) and not item.startswith('$'):
+            item = '$' + item
+        return self._variables[item]
+
+    def add_variable(self, value, mutable: bool, name=None) -> None:
+        self._variables[self._variable_counter] = GlobalVariable(mutable, value)
+        self._variable_counter += 1
+        if name is not None:
+            if isinstance(name, str) and not name.startswith('$'):
+                name = '$' + name
+            self._variables[name] = GlobalVariable(mutable, value)
+
+    def __setitem__(self, key: str | int, value):
+        if isinstance(key, int):
+            self._variables[key].value = value
+        else:
+            if key.startswith('$'):
+                key = key[1:]
+            self._variables['$' + key].value = value
+
+    def __contains__(self, item: str | int) -> bool:
+        if isinstance(item, str) and not item.startswith('$'):
+            item = '$' + item
+        return item in self._variables
 
 
 @singleton
@@ -212,13 +275,16 @@ class Memory:
         if index >= len(self._memory):
             raise IndexError(f"Cannot access memory at index {index} because it is out of bounds")
         if number_type == NumberType.i32:
-            return FixedNumber(int.from_bytes(self._memory[index:index + 4], byteorder='little', signed=True), NumberType.i32)
+            return FixedNumber(int.from_bytes(self._memory[index:index + 4], byteorder='little', signed=True),
+                               NumberType.i32)
         elif number_type == NumberType.i64:
-            return FixedNumber(int.from_bytes(self._memory[index:index + 8], byteorder='little', signed=True), NumberType.i64)
+            return FixedNumber(int.from_bytes(self._memory[index:index + 8], byteorder='little', signed=True),
+                               NumberType.i64)
         elif number_type == NumberType.f32:
-            return FixedNumber(ctypes.c_float(int.from_bytes(self._memory[index:index + 4], byteorder='little', signed=True)).value, NumberType.f32)
+            return FixedNumber(
+                ctypes.c_float(int.from_bytes(self._memory[index:index + 4], byteorder='little', signed=True)).value,
+                NumberType.f32)
         elif number_type == NumberType.f64:
-            return FixedNumber(ctypes.c_double(int.from_bytes(self._memory[index:index + 8], byteorder='little', signed=True)).value, NumberType.f64)
-
-
-
+            return FixedNumber(
+                ctypes.c_double(int.from_bytes(self._memory[index:index + 8], byteorder='little', signed=True)).value,
+                NumberType.f64)

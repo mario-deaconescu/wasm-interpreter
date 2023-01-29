@@ -16,19 +16,22 @@ class ConstExpression(UnaryEvaluation):
     def __init__(self, **kwargs) -> None:
         super().__init__(no_input=True)
         value: int | float
+        operand = self.operand
         try:
             if self.number_type == NumberType.i32 or self.number_type == NumberType.i64:
-                value = int(self.operand.expression_name, 0)
+                value = int(operand.expression_name, 0)
             else:
-                value = float(self.operand.expression_name)
+                value = float(operand.expression_name)
         except ValueError:
-            raise UnexpectedTokenError(str(self.operand.expression_name))
-        if self.operand.expression_name.startswith("0x"):
+            raise UnexpectedTokenError(str(operand.expression_name))
+        if operand.expression_name.startswith("0x"):
             if self.number_type == NumberType.i32 and (value & 0x80000000):
                 value = -0x80000000 + (value & 0x7fffffff)
             elif self.number_type == NumberType.i64 and (value & 0x8000000000000000):
                 value = -0x8000000000000000 + (value & 0x7fffffffffffffff)
         self.value = FixedNumber(value, self.number_type)
+        Stack().contract(1)
+        Stack().push(self.value.number_type)
 
     def assert_correctness(self, local_variables: VariableWatch, global_variables=None) -> NumberType:
         return self.number_type

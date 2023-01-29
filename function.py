@@ -3,7 +3,7 @@ from __future__ import annotations
 from enum import Enum
 
 from custom_exceptions import InvalidFunctionSignatureError, UnknownFunctionError, EmptyOperandError, \
-    UndefinedElementError
+    UndefinedElementError, InvalidNumberTypeError, InvalidFunctionResultError
 from enums import NumberType
 from evaluations import Evaluation, UnaryEvaluation, EvaluationReport
 from expressions import ExportExpression, SExpression
@@ -31,7 +31,7 @@ class FunctionRegistry:
 class FunctionExpression(Evaluation):
     export_as: str = None
     parameters: list[NumberVariable]
-    result_type: list[NumberType] | None = None
+    result_types: list[NumberType] | None = None
 
     def __str__(self) -> str:
         representation: str = super().__str__()
@@ -42,11 +42,11 @@ class FunctionExpression(Evaluation):
             else:
                 parameter_representations.append(f"{parameter.name}: {str(parameter.number_type.value)}")
         representation += f"({', '.join(parameter_representations)})"
-        representation += f" -> {self.result_type.value if self.result_type is not None else 'None'}"
+        representation += f" -> {self.result_types if self.result_types is not None else 'None'}"
         representation += f' (exported as "{self.export_as}")'
         return representation
 
-    def __init__(self, **kwargs) -> None:
+    def __init__(self, variables=None) -> None:
         super().__init__()
         self.parameters = []
         if len(self.children) > 0:
@@ -68,10 +68,15 @@ class FunctionExpression(Evaluation):
                 result_expression: ResultExpression = self.children[0]
                 self.result_types = result_expression.number_types
                 self.children = self.children[1:]
-        for child in self.children:
-            if not isinstance(child, Evaluation):
-                # raise TypeError("Expression can not be evaluated")
-                pass
+        if self.result is not None:
+            self.result_types = self.result.number_types
+        if self.result_types is not None:
+            if not variables['~typing~'] and len(self.result_types) != len(Stack()):
+                raise InvalidFunctionResultError(self, *self.result_types)
+            Stack().contract(len(self.result_types))
+        else:
+            if not variables['~typing~'] and len(Stack()) != 0:
+                raise InvalidFunctionResultError(self)
 
     def initialize_parameters(self, local_variables: VariableWatch, global_variables: GlobalVariableWatch,
                               *args: NumberVariable | FixedNumber) \
@@ -88,13 +93,6 @@ class FunctionExpression(Evaluation):
             if not isinstance(expression, Evaluation):
                 raise TypeError("Expression can not be evaluated")
         return new_local_variables
-
-    def assert_correctness(self, local_variables: VariableWatch, global_variables=None) -> NumberType:
-        # Check parameters
-        # local_variables = self.initialize_parameters(local_variables, *args)
-        for evaluation in self.children:
-            evaluation.assert_correctness(local_variables)
-
     def evaluate(self, stack: Stack, local_variables: VariableWatch = None, global_variables=None,
                  *args: FixedNumber) -> None:
         super().evaluate(stack, local_variables, global_variables)
@@ -135,7 +133,17 @@ class CallExpression(Evaluation):
     def __init__(self, variables=None) -> None:
         super().__init__()
         self.expression_name, self.function_identifier = self.expression_name.split(' ')
-        self.function: FunctionExpression = variables[self.function_identifier]
+        try:
+            self.function_identifier = int(self.function_identifier)
+        except ValueError:
+            pass
+        try:
+            self.function: FunctionExpression = variables[self.function_identifier]
+        except KeyError:
+            pass
+        else:
+            if self.function.result_types is not None:
+                Stack().size_to(len(self.function.result_types))
 
     def evaluate(self, stack: Stack, local_variables: VariableWatch = None, global_variables=None) -> None:
         super().evaluate(stack, local_variables)
@@ -188,6 +196,9 @@ class ReturnExpression(UnaryEvaluation):
         if len(self.children) == 1:
             evaluation: FixedNumber = self.check_and_evaluate(stack, local_variables)
             stack.push(evaluation)
+        elif len(self.children) > 1:
+            for child in self.children:
+                child.evaluate(stack, local_variables)
         return EvaluationReport(signal_return=True)
 
     def __init__(self, **kwargs) -> None:
@@ -230,15 +241,24 @@ class ExpressionType(Enum):
 class TypeExpression(UnaryEvaluation):
     type_name: str | int = None
     expression_type: ExpressionType = None
+    parameters: list[NumberVariable] = []
+    results: list[NumberType] = []
 
-    def __init__(self, **kwargs) -> None:
+    def __init__(self, variables=None) -> None:
         super().__init__(numeric=False, skip_operand_check=True)
         Stack().contract(1)
         self.expression_name, self.type_name = self.expression_name.split(' ')
         if len(self.children) != 1:
-            return
-        if isinstance(self.operand, FunctionExpression):
+            operand = variables[self.type_name]
+            self.parameters = operand.parameters
+            self.results = operand.results
+        elif isinstance(operand := self.operand, FunctionExpression):
             self.expression_type = ExpressionType.FUNCTION
+            function: FunctionExpression = operand
+            self.parameters = function.parameters
+            self.results = function.result_types
+            variables[self.type_name] = self
+        variables['~typing~'] = False
 
     def __str__(self):
         return f'{super().__str__()}({self.type_name})'

@@ -84,6 +84,8 @@ CLASSES_DICT: dict[str, str] = {
     'br_if': 'BranchIfExpression',
     'br_table': 'BranchTableExpression',
     'gt': 'F32GTExpression',
+    'unreachable': 'UnreachableExpression',
+    'global': 'GlobalExpression',
 }
 
 WARNING_CODE = '\033[93m'
@@ -96,6 +98,8 @@ class ExpressionInstantiater:
 
     def __init__(self):
         self.temporary_variables = VariableWatch()
+        self.temporary_variables.add_variable(False, '~typing~')
+        self.temporary_variables.add_variable(False, '~assert~')
 
     def create_expression(self, expression_string: str, **kwargs) -> SExpression:
         instance = SExpression()
@@ -133,6 +137,7 @@ class ExpressionInstantiater:
                 instance.__class__ = CallExpression
             elif expression_string.startswith('type'):
                 instance.__class__ = TypeExpression
+                self.temporary_variables.add_variable(True, '~typing~')
             elif expression_string.startswith('local'):
                 instance.__class__ = LocalExpression
         else:
@@ -150,7 +155,10 @@ class ExpressionInstantiater:
 
         # Special case fot quote
         if children_string.startswith('quote'):
-            children_string = children_string.split(' ', 1)[1].strip('"')
+            # children_string = children_string.split(' ', 1)[1].strip('"')
+            children_string = re.sub('quote +', '', children_string)
+            children_string = re.sub('"([^"]+)" *', r'\1 ', children_string)
+            raise UnexpectedTokenError(f'Unexpected token: {children_string}')
 
         children_parentheses: list[str] = SExpression.get_parentheses(children_string)
         if len(children_parentheses) > 0 and children_parentheses[0].startswith('$'):
@@ -183,9 +191,15 @@ class ExpressionInstantiater:
                 isinstance(instance, IfExpression) or \
                 isinstance(instance, CallExpression):
             restore_stack = True
-            Stack().init()
+            #if not isinstance(instance, IfExpression):
+            Stack().push_stack()
+
+        if isinstance(instance, AssertInvalidExpression):
+            self.temporary_variables.add_variable(True, '~assert~')
 
         c = []
+        if_parsed_type: bool = False
+        if_parsed_condition: bool = False
         for x in children_parentheses:
             try:
                 c.append(self.create_expression(x))
@@ -198,6 +212,33 @@ class ExpressionInstantiater:
                 temp = SExpression()
                 temp.expression_name = "~invalid~"
                 c.append(temp)
+            if self.temporary_variables['~assert~'] and isinstance(c[-1], BranchExpression):
+                break
+            if isinstance(instance, IfExpression):
+                if isinstance(c[-1], ParamExpression) and not if_parsed_type:
+                    params: ParamExpression = c[-1]
+                    if len(Stack().get_previous_stack()) > 0 and isinstance(Stack().get_previous_stack()[-1], NumberType) and len(params.number_types) == 1 and Stack().get_previous_stack()[-1] != params.number_types[0]:
+                        raise InvalidNumberTypeError(FixedNumber(None, params.number_types[0]), Stack().get_previous_stack()[-1])
+                    for _ in params.number_types:
+                        if len(Stack().get_previous_stack()) == 0:
+                            # No parameters
+                            raise InvalidNumberTypeError(None, None)
+                        Stack().get_previous_stack().pop()
+                        Stack().expand(1)
+                elif isinstance(c[-1], TypeExpression):
+                    if_parsed_type = True
+                    type_expression: TypeExpression = c[-1]
+                    for _ in type_expression.parameters:
+                        Stack().get_previous_stack().pop()
+                        Stack().expand(1)
+                elif not if_parsed_condition and not isinstance(c[-1], ThenExpression) and not isinstance(c[-1], ElseExpression) and not isinstance(c[-1], ResultExpression) and not isinstance(c[-1], TypeExpression):
+                    if_parsed_condition = True
+                    Stack().contract(1)
+                elif isinstance(c[-1], ThenExpression):
+                    instance.then_results = c[-1].result_size
+                elif isinstance(c[-1], ElseExpression):
+                    instance.else_results = c[-1].result_size
+
         instance.children = c
 
         # Check if expression has a name
@@ -207,12 +248,18 @@ class ExpressionInstantiater:
             # Remove the variable name from the children
             instance.children = instance.children[1:]
 
+        instance.__init__(variables=self.temporary_variables)
+
+        if isinstance(instance, IfExpression) and not if_parsed_condition:
+            if len(Stack()) == 0:
+                raise InvalidNumberTypeError(None, None)
+
+            Stack().contract(1)
+
         if restore_stack:
-            Stack().expand(initial_stack_size)
+            Stack().pop_stack()
         elif isinstance(instance, ThenExpression) or isinstance(instance, ElseExpression):  # Reset local stack
             Stack().size_to(initial_stack_size)
-
-        instance.__init__(variables=self.temporary_variables)
         if instance.name is not None:
             self.temporary_variables.add_variable(instance, instance.name)
         return instance

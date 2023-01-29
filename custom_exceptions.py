@@ -8,11 +8,13 @@ if TYPE_CHECKING:
     from variables import FixedNumber, NumberVariable, Stack
 
 EXCEPTION_NAMES: dict[str, list[str]] = {
-    'type mismatch': ['InvalidNumberTypeError', 'EmptyOperandError'],
+    'type mismatch': ['InvalidNumberTypeError', 'EmptyOperandError', 'InvalidFunctionResultError'],
     'integer divide by zero': ['DivisionByZeroError'],
     'integer overflow': ['IntegerOverflowError'],
     'unexpected token': ['UnexpectedTokenError'],
     'undefined element': ['UndefinedElementError'],
+    'inline function type': ['UnexpectedTokenError'],
+    'mismatching label': ['UnexpectedTokenError'],
 }
 
 
@@ -22,7 +24,10 @@ class WebAssemblyException(Exception):
 
 class InvalidNumberTypeError(WebAssemblyException):
 
-    def __init__(self, number: FixedNumber, expected_number_type: NumberType):
+    def __init__(self, number: FixedNumber = None, expected_number_type: NumberType = None):
+        if number is None and expected_number_type is None:
+            super().__init__('Invalid number type')
+            return
         self.number = number
         self.expected_number_type = expected_number_type
         message: str = f'Invalid number type: Expected number type "{expected_number_type.name}" and got ' \
@@ -57,6 +62,15 @@ class InvalidFunctionSignatureError(WebAssemblyException):
         self.parameters = args
         message: str = f'Function "{function.name}" expected {len(function.parameters)} and got {len(args)}'
         super().__init__(message)
+
+
+class InvalidFunctionResultError(WebAssemblyException):
+
+        def __init__(self, function: FunctionExpression, *results: FixedNumber | NumberVariable):
+            self.function = function
+            self.result = results
+            message: str = f'Function "{function.name}" expected {len(function.result_types) if function.result_types else 0} and got {len(results)}'
+            super().__init__(message)
 
 
 class StackOverflowError(WebAssemblyException):

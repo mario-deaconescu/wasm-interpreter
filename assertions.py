@@ -35,8 +35,9 @@ class AssertInvalidExpression(AssertExpression):
 
     instantiation_errors: list[Type[WebAssemblyException]] = None
 
-    def __init__(self, **kwargs):
+    def __init__(self, variables=None):
         super().__init__()
+        variables['~assert~'] = False
 
     def assert_expression(self) -> bool:
         # Check if return type is string
@@ -94,7 +95,7 @@ class AssertReturnExpression(AssertExpression):
 
             result_expression.evaluate(stack, VariableWatch())
             expected_result: FixedNumber = stack.pop()
-            if abs(result)  != abs(expected_result):
+            if abs(result) != abs(expected_result):
                 return False
         return True
 

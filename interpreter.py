@@ -23,8 +23,9 @@ def read_expressions(input_file_name: str) -> Generator[SExpression, None, None]
         # Remove comments
         expression_string: str = re.sub(r';.*', '', input_file.read()).replace('\n', '')
         expression_string = re.sub(" +", " ", expression_string)
-    instantiater = ExpressionInstantiater()
+        expression_string = expression_string.replace('if(then', 'if (then')
     for index, string in enumerate(SExpression.get_parentheses(expression_string)):
+        instantiater = ExpressionInstantiater()
         if DEBUG:
             # print(f"Parsed expression #{index}: {string}")
             try:
