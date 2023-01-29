@@ -151,7 +151,7 @@ def assert_number_type(number: int | float, number_type: NumberType) -> int | fl
     # Type checking
     if (number_type == NumberType.i32 or number_type == NumberType.i64) and not isinstance(number, int):
         raise InvalidNumberTypeError(FixedNumber(number, None), number_type)
-    elif (number_type == NumberType.f32 or number_type == NumberType.f64) and not isinstance(number, float):
+    elif (number_type == NumberType.f32 or number_type == NumberType.f64) and not (isinstance(number, float) or isinstance(number, int)):
         raise InvalidNumberTypeError(FixedNumber(number, None), number_type)
 
     # Overflow

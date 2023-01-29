@@ -81,6 +81,9 @@ CLASSES_DICT: dict[str, str] = {
     'nop': 'NOPExpression',
     'elem': 'ElementExpression',
     'br': 'BranchExpression',
+    'br_if': 'BranchIfExpression',
+    'br_table': 'BranchTableExpression',
+    'gt': 'F32GTExpression',
 }
 
 WARNING_CODE = '\033[93m'

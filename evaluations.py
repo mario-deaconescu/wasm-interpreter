@@ -62,16 +62,10 @@ class UnaryEvaluation(Evaluation):
                 raise InvalidNumberTypeError(FixedNumber(None, self.operand.number_type), self.number_type)
         Stack().expand(1)
 
-    def assert_correctness(self, local_variables: VariableWatch, global_variables=None) -> NumberType:
-        return_type: NumberType = self.operand.assert_correctness(local_variables)
-        if not return_type == self.number_type:
-            raise InvalidNumberTypeError(FixedNumber(0, return_type), self.number_type)
-        return self.number_type
-
     def check_and_evaluate(self, stack: Stack, local_variables: VariableWatch) -> FixedNumber:
         self.operand.evaluate(stack, local_variables)
         evaluation: FixedNumber = stack.pop()
-        if not evaluation.number_type == self.number_type:
+        if self.number_type is not None and not evaluation.number_type == self.number_type:
             raise InvalidNumberTypeError(evaluation, self.number_type)
         return evaluation
 

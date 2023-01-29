@@ -15,6 +15,11 @@ class BlockExpression(Evaluation):
         for child in self.children:
             report: EvaluationReport | None = child.evaluate(stack, local_variables)
             if report is not None:
+                if report.jump_to is not None:
+                    try:
+                        report.jump_to = int(report.jump_to)
+                    except ValueError:
+                        pass
                 if report.signal_break and (report.jump_to == 0 or report.jump_to == self.name):
                     break
                 elif report.signal_break and isinstance(report.jump_to, int):
@@ -123,3 +128,34 @@ class BranchExpression(Evaluation):
         for child in self.children[1:]:
             child.evaluate(stack, local_variables, global_variables)
         return EvaluationReport(signal_break=True, jump_to=self.children[0].expression_name)
+
+
+class BranchIfExpression(Evaluation):
+
+    def __init__(self, **kwargs):
+        super().__init__()
+        if len(self.children) < 2:
+            EmptyOperandError.try_raise(2, Stack())
+
+    def evaluate(self, stack: Stack, local_variables: VariableWatch = None, global_variables=None) -> EvaluationReport:
+        self.children[-1].evaluate(stack, local_variables, global_variables)
+        truth = stack.pop().value
+        if truth != 0:
+            self.children[1].evaluate(stack, local_variables, global_variables)
+            return EvaluationReport(signal_break=True, jump_to=self.children[0].expression_name)
+
+
+class BranchTableExpression(Evaluation):
+
+    def __init__(self, **kwargs):
+        super().__init__()
+        if len(self.children) < 2:
+            EmptyOperandError.try_raise(2, Stack())
+
+    def evaluate(self, stack: Stack, local_variables: VariableWatch = None, global_variables=None) -> EvaluationReport:
+        if isinstance(self.children[-1], Evaluation):
+            self.children[-1].evaluate(stack, local_variables, global_variables)
+            index = stack.pop().value
+        else:
+            index = self.children[-1].expression_name
+        return EvaluationReport(signal_break=True, jump_to=index)
