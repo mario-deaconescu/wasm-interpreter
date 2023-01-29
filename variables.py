@@ -175,6 +175,9 @@ def assert_number_type(number: int | float, number_type: NumberType) -> int | fl
             return False
         return -2147483648 <= numerator <= 2147483647 and -2147483648 <= denominator <= 2147483647
 
+    if number_type == NumberType.v128:
+        return number
+
     # Type checking
     if (number_type == NumberType.i32 or number_type == NumberType.i64) and not isinstance(number, int):
         raise InvalidNumberTypeError(FixedNumber(number, None), number_type)

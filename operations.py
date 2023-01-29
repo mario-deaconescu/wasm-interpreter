@@ -17,13 +17,35 @@ class ConstExpression(UnaryEvaluation):
         super().__init__(no_input=True)
         value: int | float
         operand = self.operand
-        try:
-            if self.number_type == NumberType.i32 or self.number_type == NumberType.i64:
-                value = int(operand.expression_name, 0)
-            else:
-                value = float(operand.expression_name)
-        except ValueError:
-            raise UnexpectedTokenError(str(operand.expression_name))
+        if self.number_type == NumberType.v128:
+            total_value: int = 0
+            if operand.expression_name.startswith("i8x16"):
+                vector = operand.expression_name.split(' ', 1)[1]
+                vector = [int(x, 0) for x in vector.split(' ')]
+                for index, number in enumerate(reversed(vector)):
+                    if number < -128 or number > 255:
+                        raise UnexpectedTokenError(str(number))
+                    if number < 0:
+                        number = 256 + number
+                    total_value += number << (8 * index)
+            elif operand.expression_name.startswith("i16x8"):
+                vector = operand.expression_name.split(' ', 1)[1]
+                vector = [int(x, 0) for x in vector.split(' ')]
+                for index, number in enumerate(reversed(vector)):
+                    if number < -32768 or number > 32767:
+                        raise UnexpectedTokenError(str(number))
+                    if number < 0:
+                        number = 65536 + number
+                    total_value += number << (16 * index)
+            value = total_value
+        else:
+            try:
+                if self.number_type == NumberType.i32 or self.number_type == NumberType.i64:
+                    value = int(operand.expression_name, 0)
+                else:
+                    value = float(operand.expression_name)
+            except ValueError:
+                raise UnexpectedTokenError(str(operand.expression_name))
         if operand.expression_name.startswith("0x"):
             if self.number_type == NumberType.i32 and (value & 0x80000000):
                 value = -0x80000000 + (value & 0x7fffffff)
@@ -596,4 +618,35 @@ class F32GTExpression(BinaryEvaluation):
             stack.push(FixedNumber(0, self.number_type))
 
 
+class AddPairwiseSignedExpression(UnaryEvaluation):
 
+    def evaluate(self, stack: Stack, local_variables: VariableWatch = None, global_variables=None) -> None:
+        super().evaluate(stack, local_variables)
+        evaluation = self.check_and_evaluate(stack, local_variables)
+        numbers: list[int] = []
+        for index in range(15, 0, -1):
+            numbers.append(evaluation.value >> (index * 8) & 0xff)
+        # Convert elements to signed values
+        numbers = [number if number < 128 else number - 256 for number in numbers]
+        result = [first + second for first, second in zip(numbers[::2], numbers[1::2])]
+        value = 0
+        for index, number in reversed(list(enumerate(result))):
+            if number < 0:
+                number = 65536 + number
+            value += number << (16 * index)
+        stack.push(FixedNumber(value, self.number_type))
+
+
+class AddPairwiseUnsignedExpression(UnaryEvaluation):
+
+    def evaluate(self, stack: Stack, local_variables: VariableWatch = None, global_variables=None) -> None:
+        super().evaluate(stack, local_variables)
+        evaluation = self.check_and_evaluate(stack, local_variables)
+        numbers: list[int] = []
+        for index in range(15, 0, -1):
+            numbers.append(evaluation.value >> (index * 8) & 0xff)
+        result = [first + second for first, second in zip(numbers[::2], numbers[1::2])]
+        value = 0
+        for index, number in reversed(list(enumerate(result))):
+            value += number << (16 * index)
+        stack.push(FixedNumber(value, self.number_type))

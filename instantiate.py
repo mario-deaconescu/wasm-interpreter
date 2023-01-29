@@ -87,6 +87,8 @@ CLASSES_DICT: dict[str, str] = {
     'unreachable': 'UnreachableExpression',
     'global': 'GlobalExpression',
     'wrap_i64': 'WrapI64Expression',
+    'i16x8.extadd_pairwise_i8x16_s': 'AddPairwiseSignedExpression',
+    'i16x8.extadd_pairwise_i8x16_u': 'AddPairwiseUnsignedExpression',
 }
 
 WARNING_CODE = '\033[93m'
@@ -178,6 +180,8 @@ class ExpressionInstantiater:
         new_type: str = instance.expression_name
         if re.fullmatch(r'.{3}\.([a-z_0-9]+)', instance.expression_name) is not None:
             new_type = new_type[4:]
+        elif re.fullmatch(r'v128\..+', instance.expression_name) is not None:
+            new_type = new_type[5:]
 
         # Check expression type
         if new_type in CLASSES_DICT.keys():

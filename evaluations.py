@@ -58,7 +58,10 @@ class UnaryEvaluation(Evaluation):
         if len(self.children) < 1 and not kwargs.get('skip_operand_check', False):  # Special check for TypeExpression
             EmptyOperandError.try_raise(1, Stack())
         if numeric:
-            self.number_type = NumberType(self.expression_name[:3])
+            if self.expression_name.startswith('v128') or self.expression_name.startswith('i16x8'):
+                self.number_type = NumberType.v128
+            else:
+                self.number_type = NumberType(self.expression_name[:3])
             if isinstance(self.operand,
                           Evaluation) and self.operand.number_type is not None and self.operand.number_type != self.number_type:
                 raise InvalidNumberTypeError(FixedNumber(None, self.operand.number_type), self.number_type)
