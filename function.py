@@ -99,7 +99,9 @@ class FunctionExpression(Evaluation):
         # Check parameters
         local_variables = self.initialize_parameters(local_variables, global_variables, *args)
         for evaluation in self.children:
-            evaluation.evaluate(stack, local_variables)
+            report: EvaluationReport | None = evaluation.evaluate(stack, local_variables)
+            if report is not None and report.signal_return:
+                break
 
 
 class InvokeExpression(Evaluation):

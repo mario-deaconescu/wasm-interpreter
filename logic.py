@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
-from custom_exceptions import EmptyOperandError, InvalidNumberTypeError
+from custom_exceptions import EmptyOperandError, InvalidNumberTypeError, UnknownLabelError
 from enums import NumberType
 from evaluations import Evaluation, LocalGetter, EvaluationReport
 from expressions import SExpression
@@ -14,10 +14,13 @@ from variables import Stack, VariableWatch
 
 class BlockExpression(Evaluation):
 
-    def __init__(self, **kwargs):
+    def __init__(self, variables=None, **kwargs):
         super().__init__(**kwargs)
         if self.result is not None:
             Stack().size_to(len(self.result.number_types))
+        else:
+            Stack().size_to(0)
+        variables['~blocks~'] += 1
 
     def evaluate(self, stack: Stack, local_variables: VariableWatch = None, global_variables=None) -> EvaluationReport | None:
         for child in self.children:
@@ -28,12 +31,12 @@ class BlockExpression(Evaluation):
                         report.jump_to = int(report.jump_to)
                     except ValueError:
                         pass
-                if report.signal_break and (report.jump_to == 0 or report.jump_to == self.name):
+                if report.signal_break and (report.jump_to == 0 or report.jump_to == '$' + self.name):
                     break
                 elif report.signal_break and isinstance(report.jump_to, int):
                     report.jump_to -= 1
                     return report
-                if report.signal_return:
+                if report.signal_return or report.signal_break:
                     return report
 
 
@@ -216,8 +219,10 @@ class SelectExpression(Evaluation):
 class BranchExpression(Evaluation):
 
     def evaluate(self, stack: Stack, local_variables: VariableWatch = None, global_variables=None) -> EvaluationReport:
-        for child in self.children[1:]:
+        for child in self.children:
             child.evaluate(stack, local_variables, global_variables)
+        if self.name is not None:
+            return EvaluationReport(signal_break=True, jump_to=self.name)
         return EvaluationReport(signal_break=True, jump_to=self.children[0].expression_name)
 
 
@@ -238,25 +243,33 @@ class BranchIfExpression(Evaluation):
 
 class BranchTableExpression(Evaluation):
 
-    def __init__(self, **kwargs):
-        super().__init__()
+    def __init__(self, variables=None, **kwargs):
+        super().__init__(**kwargs)
         if self.children[0].__class__ == SExpression:
             if len(self.children) == 1 and len(self.children[0].expression_name.split(' ')) < 2:
                 EmptyOperandError.try_raise(2, Stack())
+            else:
+                try:
+                    index = int(self.children[0].expression_name)
+                except ValueError:
+                    pass
+                else:
+                    if index < 0 or index >= variables['~blocks~']:
+                        raise UnknownLabelError(str(index))
             return
-        if len(self.children) < 2:
-            EmptyOperandError.try_raise(2, Stack())
+        Stack().contract(1)
 
     def evaluate(self, stack: Stack, local_variables: VariableWatch = None, global_variables=None) -> EvaluationReport:
+        for child in [child for child in self.children if isinstance(child, Evaluation)]:
+            child.evaluate(stack, local_variables, global_variables)
         value = stack.pop().value
         index = 0
-        for child in self.children[0].expression_name.split(' '):
-            if isinstance(child, Evaluation):
-                child.evaluate(stack, local_variables, global_variables)
-                temp_value = stack.pop().value
-            else:
-                temp_value = int(child)
-            if temp_value == value:
-                return EvaluationReport(signal_break=True, jump_to=index)
+        if self.name is not None:
+            table = self.name.strip(' ').split(' ')
+        else:
+            table = self.children[0].expression_name.split(' ')
+        for element in table[:-1]:
+            if index == value:
+                return EvaluationReport(signal_break=True, jump_to=element)
             index += 1
-        return EvaluationReport(signal_break=True, jump_to=index)
+        return EvaluationReport(signal_break=True, jump_to=table[-1])

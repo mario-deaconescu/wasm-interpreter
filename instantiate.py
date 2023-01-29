@@ -86,6 +86,7 @@ CLASSES_DICT: dict[str, str] = {
     'gt': 'F32GTExpression',
     'unreachable': 'UnreachableExpression',
     'global': 'GlobalExpression',
+    'wrap_i64': 'WrapI64Expression',
 }
 
 WARNING_CODE = '\033[93m'
@@ -100,6 +101,7 @@ class ExpressionInstantiater:
         self.temporary_variables = VariableWatch()
         self.temporary_variables.add_variable(False, '~typing~')
         self.temporary_variables.add_variable(False, '~assert~')
+        self.temporary_variables.add_variable(0, '~blocks~')
 
     def create_expression(self, expression_string: str, **kwargs) -> SExpression:
         instance = SExpression()
@@ -146,12 +148,18 @@ class ExpressionInstantiater:
         if len(split_expression) > 1:
             children_string = split_expression[1]
         if children_string.startswith('$'):
-            # This is a variable name
-            if ' ' not in children_string:
-                instance.name = children_string[1:]
+            if expression_string.startswith('br_table'):
+                instance.name = ""
+                while children_string.startswith('$'):
+                    instance.name += children_string.split(' ', 1)[0] + ' '
+                    children_string = children_string.split(' ', 1)[1]
             else:
-                instance.name, children_string = children_string.split(' ', 1)
-                instance.name = instance.name[1:]
+                # This is a variable name
+                if ' ' not in children_string:
+                    instance.name = children_string[1:]
+                else:
+                    instance.name, children_string = children_string.split(' ', 1)
+                    instance.name = instance.name[1:]
 
         # Special case fot quote
         if children_string.startswith('quote'):

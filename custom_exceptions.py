@@ -15,6 +15,7 @@ EXCEPTION_NAMES: dict[str, list[str]] = {
     'undefined element': ['UndefinedElementError'],
     'inline function type': ['UnexpectedTokenError'],
     'mismatching label': ['UnexpectedTokenError'],
+    'unknown label': ['UnknownLabelError'],
 }
 
 
@@ -135,4 +136,12 @@ class UnreachableError(WebAssemblyException):
 
     def __init__(self):
         message: str = 'Unreachable code'
+        super().__init__(message)
+
+
+class UnknownLabelError(WebAssemblyException):
+
+    def __init__(self, label: str):
+        self.label = label
+        message: str = f'Unknown label: "{label}"'
         super().__init__(message)

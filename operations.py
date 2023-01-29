@@ -6,7 +6,7 @@ from math import floor, ceil
 from custom_exceptions import DivisionByZeroError, IntegerOverflowError, UnexpectedTokenError
 from enums import NumberType
 
-from evaluations import BinaryEvaluation, UnaryEvaluation
+from evaluations import BinaryEvaluation, UnaryEvaluation, EvaluationReport
 from variables import VariableWatch, FixedNumber, Stack
 
 
@@ -43,9 +43,11 @@ class ConstExpression(UnaryEvaluation):
 
 class AddExpression(BinaryEvaluation):
 
-    def evaluate(self, stack: Stack, local_variables: VariableWatch = None, global_variables=None) -> None:
+    def evaluate(self, stack: Stack, local_variables: VariableWatch = None, global_variables=None) -> EvaluationReport:
         super().evaluate(stack, local_variables)
         first_evaluation, second_evaluation = self.check_and_evaluate(stack, local_variables)
+        if first_evaluation is None:
+            return second_evaluation
         stack.push(FixedNumber(first_evaluation.value + second_evaluation.value, self.number_type))
 
 
@@ -323,6 +325,18 @@ class CtzExpression(UnaryEvaluation):
         else:
             stack.push(FixedNumber(count_t(first_evaluation.value), self.number_type))
 
+
+class WrapI64Expression(UnaryEvaluation):
+
+    def evaluate(self, stack: Stack, local_variables: VariableWatch = None, global_variables=None) -> None:
+        super().evaluate(stack, local_variables)
+        evaluation = self.check_and_evaluate(stack, local_variables)
+        # Detect sign of new value
+        if evaluation.value & 0x80000000:
+            value = evaluation.value & 0x7fffffff - 0x80000000
+        else:
+            value = evaluation.value & 0x7fffffff
+        stack.push(FixedNumber(value, self.number_type))
 
 class ClzExpression(UnaryEvaluation):
     def evaluate(self, stack: Stack, local_variables: VariableWatch = None, global_variables=None) -> None:

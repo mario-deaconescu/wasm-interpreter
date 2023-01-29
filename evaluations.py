@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from abc import abstractmethod
 from dataclasses import dataclass
+from typing import Tuple
 
 from custom_exceptions import InvalidNumberTypeError, UnknownVariableError, EmptyOperandError, UnexpectedTokenError, \
     UnreachableError
@@ -105,8 +106,8 @@ class BinaryEvaluation(Evaluation):
         Stack().expand(1)
 
     def check_and_evaluate(self, stack: Stack, local_variables: VariableWatch = None,
-                           global_variables: VariableWatch = None) -> tuple[
-        FixedNumber, FixedNumber]:
+                           global_variables: VariableWatch = None) -> tuple[FixedNumber, FixedNumber] | tuple[
+        None, EvaluationReport]:
         if len(self.children) == 1:
             self.children[0].evaluate(stack, local_variables)
             second_evaluation: FixedNumber = stack.pop()
@@ -114,13 +115,17 @@ class BinaryEvaluation(Evaluation):
             return first_evaluation, second_evaluation
         first_operand = self.first_operand
         if isinstance(first_operand, Evaluation):
-            first_operand.evaluate(stack, local_variables)
+            report: EvaluationReport | None = first_operand.evaluate(stack, local_variables)
+            if report is not None and report.signal_break:
+                return None, report
             first_evaluation: FixedNumber = stack.pop()
         elif isinstance(first_operand, FixedNumber):
             first_evaluation: FixedNumber = first_operand
         second_operand = self.second_operand
         if isinstance(second_operand, Evaluation):
-            second_operand.evaluate(stack, local_variables)
+            report: EvaluationReport | None = second_operand.evaluate(stack, local_variables)
+            if report is not None and report.signal_break:
+                return None, report
             second_evaluation: FixedNumber = stack.pop()
         elif isinstance(second_operand, FixedNumber):
             second_evaluation: FixedNumber = second_operand
@@ -314,4 +319,3 @@ class GlobalExpression(Evaluation):
         self.number.evaluate(stack, local_variables, global_variables)
         index = stack.pop().value
         global_variables.add_variable(FixedNumber(index, self.number_type), self.mutable, self.name)
-
