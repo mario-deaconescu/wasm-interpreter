@@ -14,7 +14,7 @@ WARNING_CODE = '\033[93m'
 FAIL_CODE = '\033[91m'
 ENDC = '\033[0m'
 
-DEBUG = True
+DEBUG = False
 
 
 # Generator for more efficient parsing

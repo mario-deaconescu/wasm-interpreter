@@ -220,7 +220,8 @@ class BranchExpression(Evaluation):
 
     def evaluate(self, stack: Stack, local_variables: VariableWatch = None, global_variables=None) -> EvaluationReport:
         for child in self.children:
-            child.evaluate(stack, local_variables, global_variables)
+            if isinstance(child, Evaluation):
+                child.evaluate(stack, local_variables, global_variables)
         if self.name is not None:
             return EvaluationReport(signal_break=True, jump_to=self.name)
         return EvaluationReport(signal_break=True, jump_to=self.children[0].expression_name)
