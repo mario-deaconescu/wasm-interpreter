@@ -55,9 +55,6 @@ class ConstExpression(UnaryEvaluation):
         Stack().contract(1)
         Stack().push(self.value.number_type)
 
-    def assert_correctness(self, local_variables: VariableWatch, global_variables=None) -> NumberType:
-        return self.number_type
-
     def evaluate(self, stack: Stack, local_variables: VariableWatch = None, global_variables=None) -> None:
         super().evaluate(stack, local_variables)
         stack.push(self.value)

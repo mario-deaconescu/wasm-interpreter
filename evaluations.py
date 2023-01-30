@@ -37,10 +37,6 @@ class Evaluation(SExpression):
         if global_variables is None:
             global_variables = GlobalVariableWatch()
 
-    def assert_correctness(self, local_variables: VariableWatch, global_variables=None) -> NumberType:
-        return self.number_type
-
-
 class UnaryEvaluation(Evaluation):
 
     def evaluate(self, stack: Stack, local_variables: VariableWatch = None, global_variables=None) -> None:
@@ -268,9 +264,6 @@ class MemoryGrowExpression(UnaryEvaluation):
         self.operand.evaluate(stack, local_variables, global_variables)
         Memory().grow(stack.pop().value)
         stack.push(FixedNumber(initial_size, NumberType.i32))
-
-    def assert_correctness(self, local_variables: VariableWatch, global_variables=None) -> None:
-        self.operand.assert_correctness(local_variables, global_variables)
 
 
 class StoreExpression(BinaryEvaluation):

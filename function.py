@@ -156,10 +156,6 @@ class CallExpression(Evaluation):
             parameters.append(stack.pop())
         self.function.evaluate(stack, local_variables, global_variables, *parameters)
 
-    def assert_correctness(self, local_variables: VariableWatch, global_variables=None) -> NumberType:
-        for child in self.children:
-            child.assert_correctness(local_variables)
-
     def __str__(self):
         return f'{super().__str__()}({self.function_identifier})'
 
@@ -222,10 +218,6 @@ class TableFunctionExpression(Evaluation):
         if len(self.children) != 1:
             EmptyOperandError.try_raise(1, Stack())
         FunctionRegistry().register_function(self.children[0].element)
-
-    def assert_correctness(self, local_variables: VariableWatch, global_variables=None) -> None:
-        if len(self.children) != 1:
-            EmptyOperandError.try_raise(1, Stack())
 
 
 class ElementExpression(Evaluation):

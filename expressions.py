@@ -72,10 +72,6 @@ class SExpression:
 
         return [expression]
 
-    def assert_correctness(self, local_variables: VariableWatch, global_variables=None):
-        for child in self.children:
-            child.assert_correctness(local_variables)
-
     def __init__(self, variables=None) -> None:
         pass
 

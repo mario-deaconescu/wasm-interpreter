@@ -60,13 +60,6 @@ class AssertInvalidExpression(AssertExpression):
             raise TypeError(
                 f"Invalid assert operand: Expected Module, got {self.assert_operand.__class__.__name__}")
 
-        # try:
-        #     self.assert_operand.assert_correctness(VariableWatch())
-        # except WebAssemblyException as exception:
-        #     # Check if it's the right exception
-        #     for e in expected_exceptions:
-        #         if isinstance(exception, e):
-        #             return True
         return False
 
 
