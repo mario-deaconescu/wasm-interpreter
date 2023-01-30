@@ -8,7 +8,7 @@
   ## Instalare
   
   - Pentru a interpreta, rulam ```interpreter.py``` avand drept parametru numele fisierului pe care dorim sa-l interpretam.
-  - Ultima versiune de Python pentru care proiectul ruleaza este Python 3.10
+  - Programul ruleaza pentru Python 3.10 si versiuni ulterioare
   
   ## Cum functioneaza
   
