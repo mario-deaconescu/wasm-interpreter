@@ -12,10 +12,10 @@
   
   ## Cum functioneaza
   
-  - Fisierul ```interpreter.py``` citeste expresiile, cu ajutorul functiei ```read_expressions```, care scoate comentariile, (';.*' si '\n', iar in loc de '+' se pune spatiu )
+  - Fisierul ```interpreter.py``` citeste expresiile, cu ajutorul functiei ```read_expressions```, care scoate comentariile, (';; ...' si '\n', iar in loc de mai multe spatii se pune unul singur), folosind regex.
       - Dupa aceea, cu ajutorul parantezelor, functia se apeleaza recursiv pentru a crea un arbore in care radacina este ```module```, 
-      avand drept fii denumirile functiilor care sunt de interpretat, toate aceastea avand drept fii parametrii, erorile si body-ul...etc. Un exemplu simplificat de un 
-      astfel de graf este:
+      avand drept fii denumirile functiilor care sunt de interpretat, toate aceastea avand drept fii parametrii, si body-ul...etc. Un exemplu simplificat de un 
+      astfel de arbore este:
 
 ![graph (3)
 ](https://user-images.githubusercontent.com/115883033/215325914-852ace40-622c-48a2-ac11-9b0de49ec2b7.png)
@@ -27,15 +27,28 @@ P= Parametru
 
      - Functia ```check_asserts``` verifica asserturile, acestea fiind de 4 tipuri:
 
-          - Invalid, daca este eroare de sintaxa
-          - Return, ce returneaza functia
+          - Invalid, daca este eroare structurala
+          - Return, ce verifica rezultatul unor instructiuni
           - Trap, daca functia returneaza un anumit tip de eroare
           - Malformed, care verifica sintaxa
 
-  - Fisierul ```instantiate.py``` parseaza, cu ajutorul unui dictionar, trece din 
+  ## Structura POO
+
+  - Fisierul ```instantiate.py``` parseaza si, cu ajutorul unui dictionar, trece din 
   srtringul expresiei intr-o clasa corespunzatoare
   - Fisierul ```operations.py``` defineste clasele pentru operatii (adunare, scadere,
-  inmultire, impartire cu/fara semn). Functiile din clase verifica eventualele 
+  inmultire, impartire cu/fara semn, etc.). Functiile din clase verifica eventualele 
   erori si fac operatiile necesare.
-  - Fisierul ```expressions.py``` nu stiu cplm mai face
+  - Fisierele auxiliare definesc alte tipuri de expresii precum cele logice (```logic.py```), cele cu operatii pe stiva (```stackoperations.py```), etc.
+
+  Clasa de baza din care este mostenita fiecare expresie este ```SExpression```, iar o alta subclasa importanta este ```Evaluation```, din care mosteneste fiecare expresie care poate fi "evaluata" (adica este o instructiune care poate fi rulata)
+
+  O vizualizare a acestui "arbore" de mosteniri se poate vedea mai jos (pentru a vedea mai usor, este recomandat sa descarcati poza si sa dati zoom, pentru ca aveam multe clase asemanatoare care mnostenesc din aceeasi clasa parinte):
   
+![graph (1)](https://user-images.githubusercontent.com/65511514/215580516-68b0da2d-2911-4ba3-b224-2a479403a177.png)
+
+  ## Output
+    - La rularea programului, se va afisa pe ecran:
+      
+        - Numarul fiecarei expresie de tip assert, tipul ei, si daca a fost evaluata corect
+        - Eroare de tip "Not implemented" daca o expresie nu a fost implementata
